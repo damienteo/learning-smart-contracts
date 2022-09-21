@@ -1,9 +1,7 @@
-import { artifacts } from "hardhat";
+import { ethers } from "hardhat";
+import hre from "hardhat";
 
-const { ethers } = require("hardhat");
-const hre = require("hardhat");
-
-const { STAGING_QUICKNODE_KEY, PRIVATE_KEY, HELLO_WORLD_ADDRESS } = process.env;
+const { PRIVATE_KEY = "", HELLO_WORLD_ADDRESS = "" } = process.env;
 
 const contract = require("../artifacts/contracts/HelloWorld.sol/HelloWorld.json");
 const provider = hre.ethers.provider;
@@ -19,7 +17,7 @@ async function main() {
   const message = await helloWorldContract.message();
   console.log(`The message is ${message}`);
 
-  const tx = await helloWorldContract.update("Goodbye world");
+  const tx = await helloWorldContract.update("Hi again and again");
   await tx.wait();
 
   const nextMessage = await helloWorldContract.message();
