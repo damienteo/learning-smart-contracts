@@ -19,6 +19,24 @@ contract HelloWorldThree is HelloWorldThreeInterface {
         return "Testing Hello World For the First Time ";
     }
 
+    function _isPure() internal view returns (bool _check) {
+        _check = keccak256(bytes(text)) == keccak256(bytes(pureText()));
+    }
+
+    function isPure() public view returns (bool _returnValue) {
+        _returnValue = _isPure();
+    }
+
+    function _restore() internal {
+        text = pureText();
+    }
+
+    function restore() public returns (bool) {
+        if (_isPure()) return false;
+        _restore();
+        return true;
+    }
+
     function helloWorld() public view override returns (string memory) {
         return text;
     }
