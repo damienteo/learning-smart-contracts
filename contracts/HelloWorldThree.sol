@@ -16,7 +16,7 @@ contract HelloWorldThree is HelloWorldThreeInterface {
     }
 
     function pureText() public pure returns (string memory) {
-        return "Hello World For the First Time";
+        return "Testing Hello World For the First Time ";
     }
 
     function helloWorld() public view override returns (string memory) {
