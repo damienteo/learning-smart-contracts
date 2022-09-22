@@ -17,7 +17,9 @@ async function main() {
   const message = await helloWorldContract.message();
   console.log(`The message is ${message}`);
 
-  const tx = await helloWorldContract.update("Hi again and again");
+  const tx = await helloWorldContract.update(
+    `Hi again and again ${Math.random()}`
+  );
   await tx.wait();
 
   const nextMessage = await helloWorldContract.message();

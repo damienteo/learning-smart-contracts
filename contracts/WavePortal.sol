@@ -25,14 +25,16 @@ contract WavePortal {
         console.log("I am a smart contract");
 
         seed = (block.timestamp + block.difficulty) % 100;
-
     }
 
     function wave(string memory _message) public {
-        require(lastWavedAt[msg.sender] + 15 minutes < block.timestamp, 'wait 15 minutes');
+        require(
+            lastWavedAt[msg.sender] + 15 minutes < block.timestamp,
+            "wait 15 minutes"
+        );
 
         lastWavedAt[msg.sender] = block.timestamp;
-        
+
         totalWaves += 1;
         console.log("%s has waved w/ message", msg.sender, _message);
 
@@ -44,18 +46,21 @@ contract WavePortal {
 
         console.log("Random # generated: %d", seed);
 
-        if (seed < 50 ) {
+        if (seed < 50) {
             console.log("%s has won", msg.sender);
 
-             uint256 prizeAmount = 0.0001 ether;
+            uint256 prizeAmount = 0.0001 ether;
 
-            require(prizeAmount <= address(this).balance, 'Trying to withdraw more money than the contract has.');
+            require(
+                prizeAmount <= address(this).balance,
+                "Trying to withdraw more money than the contract has."
+            );
 
-            (bool success, ) = (msg.sender).call{value: prizeAmount}('');
-            require(success, 'Failed to withdraw money from contract');
+            (bool success, ) = (msg.sender).call{value: prizeAmount}("");
+            require(success, "Failed to withdraw money from contract");
         }
 
-        emit NewWave(msg.sender, block.timestamp, _message);    
+        emit NewWave(msg.sender, block.timestamp, _message);
     }
 
     function getAllWaves() public view returns (Wave[] memory) {
