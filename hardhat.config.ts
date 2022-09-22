@@ -3,7 +3,7 @@ import "@nomicfoundation/hardhat-toolbox";
 
 require("dotenv").config();
 
-const { STAGING_QUICKNODE_KEY, PRIVATE_KEY } = process.env;
+const { STAGING_QUICKNODE_KEY, PRIVATE_KEY, ETHERSCAN_API } = process.env;
 
 const config: HardhatUserConfig = {
   solidity: "0.8.9",
@@ -13,6 +13,9 @@ const config: HardhatUserConfig = {
       url: STAGING_QUICKNODE_KEY,
       accounts: [PRIVATE_KEY || ""],
     },
+  },
+  etherscan: {
+    apiKey: ETHERSCAN_API,
   },
 };
 
