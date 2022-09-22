@@ -40,9 +40,13 @@ async function main() {
   console.log(`The new message is ${subsequentMessage}`);
 }
 
-main()
-  .then(() => process.exit(0))
-  .catch((error) => {
-    console.error(error);
-    process.exit(1);
-  });
+(async () => {
+  while (true) {
+    await main()
+      .then(() => console.log("success"))
+      .catch((error) => {
+        console.error(error);
+        process.exit(1);
+      });
+  }
+})();
