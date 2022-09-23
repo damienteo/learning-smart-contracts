@@ -3,7 +3,7 @@ import hre from "hardhat";
 
 const { PRIVATE_KEY = "", HELLO_WORLD_ADDRESS = "" } = process.env;
 
-const contract = require("../artifacts/contracts/HelloWorld.sol/HelloWorld.json");
+const contract = require("../../artifacts/contracts/HelloWorld/HelloWorld.sol/HelloWorld.json");
 const provider = hre.ethers.provider;
 const signer = new ethers.Wallet(PRIVATE_KEY, provider);
 
