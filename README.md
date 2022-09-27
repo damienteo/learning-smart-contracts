@@ -1,8 +1,8 @@
-# Sample Hardhat Project
+# Learning about Solidity and Smart Contracts
 
-This project demonstrates a basic Hardhat use case. It comes with a sample contract, a test for that contract, and a script that deploys that contract.
+Store of contracts, scripts, and tests as I learn more about Solidity
 
-Try running some of the following tasks:
+Relevant Commands:
 
 ```shell
 npx hardhat help
