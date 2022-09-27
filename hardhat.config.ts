@@ -7,7 +7,7 @@ const { STAGING_QUICKNODE_KEY, PRIVATE_KEY, ETHERSCAN_API } = process.env;
 
 const config: HardhatUserConfig = {
   solidity: "0.8.9",
-  defaultNetwork: "goerli",
+  // defaultNetwork: "goerli",
   networks: {
     goerli: {
       url: STAGING_QUICKNODE_KEY,

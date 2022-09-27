@@ -87,6 +87,9 @@ async function main() {
 
   // Pay NotHelloWorld
   const [owner] = await ethers.getSigners();
+  // receive function: it only triggers when the calldata is empty
+  // receive function -> trigger on [CONTRACT].call(<value>) and not on [CONTRACT].<functionSelector>(<value>).
+  // fallback function -> trigger on any mismatched function selectors, and it can be payable to react to receiving eth sent together with those calls.
   await owner.sendTransaction({
     to: NOT_HELLO_WORLD_ADDRESS,
     value: ethers.utils.parseEther("0.000000000000000001"),
