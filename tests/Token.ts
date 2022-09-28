@@ -6,7 +6,7 @@ const NEXT_AMOUNT_TO_SEND = AMOUNT_TO_SEND + 1;
 const TRANSFER_EVENT = "Transfer";
 
 describe("Token contract", function () {
-  async function deployTokenLockFixture() {
+  async function deployTokenLoadFixture() {
     const Token = await ethers.getContractFactory("Token");
     const [owner, addr1, addr2] = await ethers.getSigners();
 
@@ -17,12 +17,12 @@ describe("Token contract", function () {
 
   describe("Deployment", function () {
     it("Should set the right owner", async function () {
-      const { hardhatToken, owner } = await loadFixture(deployTokenLockFixture);
+      const { hardhatToken, owner } = await loadFixture(deployTokenLoadFixture);
       expect(await hardhatToken.owner()).to.equal(owner.address);
     });
 
     it("Deployment should assign the total supply of tokens to the owner", async function () {
-      const { hardhatToken, owner } = await loadFixture(deployTokenLockFixture);
+      const { hardhatToken, owner } = await loadFixture(deployTokenLoadFixture);
 
       const ownerBalance = await hardhatToken.balanceOf(owner.address);
 
@@ -33,7 +33,7 @@ describe("Token contract", function () {
   describe("Transactions", function () {
     it("Should transfer tokens between accounts", async function () {
       const { hardhatToken, addr1, addr2 } = await loadFixture(
-        deployTokenLockFixture
+        deployTokenLoadFixture
       );
 
       await hardhatToken.transfer(addr1.address, AMOUNT_TO_SEND);
@@ -50,7 +50,7 @@ describe("Token contract", function () {
 
     it("Should update owner remaining supply after transfers", async function () {
       const { hardhatToken, owner, addr1, addr2 } = await loadFixture(
-        deployTokenLockFixture
+        deployTokenLoadFixture
       );
 
       await expect(
@@ -80,7 +80,7 @@ describe("Token contract", function () {
 
     it("Should emit Transfer events", async function () {
       const { hardhatToken, owner, addr1, addr2 } = await loadFixture(
-        deployTokenLockFixture
+        deployTokenLoadFixture
       );
 
       await expect(hardhatToken.transfer(addr1.address, AMOUNT_TO_SEND))
@@ -94,7 +94,7 @@ describe("Token contract", function () {
 
     it("Should fail if sender doesn't have enough tokens", async function () {
       const { hardhatToken, owner, addr1 } = await loadFixture(
-        deployTokenLockFixture
+        deployTokenLoadFixture
       );
 
       const initialOwnerBalance = await hardhatToken.balanceOf(owner.address);
