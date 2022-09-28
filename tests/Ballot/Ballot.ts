@@ -17,8 +17,6 @@ const convertStringArrayToBytes32 = (array: string[]) =>
 
 export const nextProposals = convertStringArrayToBytes32(PROPOSALS);
 
-console.log(nextProposals);
-
 describe("Ballot", function () {
   async function deployBallotLoadFixture() {
     const Ballot = await ethers.getContractFactory("Ballot");
@@ -39,36 +37,82 @@ describe("Ballot", function () {
         );
       }
     });
+
+    it("has zero votes for all proposals", async function () {
+      const { ballotContract } = await loadFixture(deployBallotLoadFixture);
+
+      for (let i = 0; i < PROPOSALS.length; i++) {
+        const proposal = await ballotContract.proposals(i);
+        expect(proposal.voteCount).to.equal(0);
+      }
+    });
+
+    it("sets the deployer address as chairperson", async function () {
+      const { ballotContract, owner } = await loadFixture(
+        deployBallotLoadFixture
+      );
+
+      expect(await ballotContract.chairperson()).to.equal(owner.address);
+    });
+
+    it("sets the voting weight for the chairperson as 1", async function () {
+      const { ballotContract, owner } = await loadFixture(
+        deployBallotLoadFixture
+      );
+
+      const voter = await ballotContract.voters(owner.address);
+
+      expect(voter[0]).to.equal(1);
+    });
   });
 
-  //     it("has zero votes for all proposals", async function () {
-  //       // TODO
-  //       throw Error("Not implemented");
-  //     });
-  //     it("sets the deployer address as chairperson", async function () {
-  //       // TODO
-  //       throw Error("Not implemented");
-  //     });
-  //     it("sets the voting weight for the chairperson as 1", async function () {
-  //       // TODO
-  //       throw Error("Not implemented");
-  //     });
-  //   });
+  describe("when the chairperson interacts with the giveRightToVote function in the contract", function () {
+    it("gives right to vote for another address", async function () {
+      const { ballotContract, addr1 } = await loadFixture(
+        deployBallotLoadFixture
+      );
 
-  //   describe("when the chairperson interacts with the giveRightToVote function in the contract", function () {
-  //     it("gives right to vote for another address", async function () {
-  //       // TODO
-  //       throw Error("Not implemented");
-  //     });
-  //     it("can not give right to vote for someone that has voted", async function () {
-  //       // TODO
-  //       throw Error("Not implemented");
-  //     });
-  //     it("can not give right to vote for someone that has already voting rights", async function () {
-  //       // TODO
-  //       throw Error("Not implemented");
-  //     });
-  //   });
+      // Voter weight is initially 0 (no right to vote)
+      const nextVoter = await ballotContract.voters(addr1.address);
+      expect(nextVoter[0]).to.equal(0);
+
+      await ballotContract.giveRightToVote(addr1.address);
+
+      const delegatedVoter = await ballotContract.voters(addr1.address);
+      expect(delegatedVoter[0]).to.equal(1);
+    });
+
+    it("can not give right to vote for someone that has voted", async function () {
+      const { ballotContract, addr1 } = await loadFixture(
+        deployBallotLoadFixture
+      );
+
+      await ballotContract.giveRightToVote(addr1.address);
+
+      const PROPOSAL_NUMBER = 0;
+
+      await ballotContract.connect(addr1).vote(PROPOSAL_NUMBER);
+
+      const voter = await ballotContract.voters(addr1.address);
+      expect(voter[3]).to.equal(PROPOSAL_NUMBER);
+
+      await expect(
+        ballotContract.giveRightToVote(addr1.address)
+      ).to.be.revertedWith("The voter already voted.");
+    });
+
+    it("can not give right to vote for someone that has already voting rights", async function () {
+      const { ballotContract, addr1 } = await loadFixture(
+        deployBallotLoadFixture
+      );
+
+      await ballotContract.giveRightToVote(addr1.address);
+
+      await expect(
+        ballotContract.giveRightToVote(addr1.address)
+      ).to.be.revertedWith("The voter already has the right to vote.");
+    });
+  });
 
   //   describe("when the voter interact with the vote function in the contract", function () {
   //     // TODO

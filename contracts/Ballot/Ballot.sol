@@ -22,6 +22,23 @@ contract Ballot {
 
     Proposal[] public proposals;
 
+    event NewVoter(address indexed voter);
+
+    event Delegated(
+        address indexed voter,
+        address indexed finalDelegate,
+        uint256 finalWeight,
+        bool voted,
+        uint256 proposal,
+        uint256 proposalVotes
+    );
+
+    event Voted(
+        address indexed voter,
+        uint256 indexed proposal,
+        uint256 weight
+    );
+
     /// Create a new ballot to choose one of 'proposalNames'
     constructor(bytes32[] memory proposalNames) {
         chairperson = msg.sender;
@@ -38,18 +55,24 @@ contract Ballot {
             msg.sender == chairperson,
             "Only chairman can give right to vote"
         );
-        require(!voters[voter].voted, "the voter already voted.");
+        require(!voters[voter].voted, "The voter already voted.");
+        require(
+            voters[voter].weight == 0,
+            "The voter already has the right to vote."
+        );
 
         voters[voter].weight = 1;
+
+        emit NewVoter(voter);
     }
 
     function delegate(address to) external {
         Voter storage sender = voters[msg.sender];
 
         require(sender.weight != 0, "You have no right to vote");
-        require(!sender.voted, "You already voted");
+        require(!sender.voted, "You already voted.");
 
-        require(to != msg.sender, "Self-delegation is disallowed");
+        require(to != msg.sender, "Self-delegation is disallowed.");
 
         // Forward the delegation as long as 'to' also delegated
         // Such loops are dangerous because they might need more gas then available if they run too long
@@ -57,12 +80,12 @@ contract Ballot {
         while (voters[to].delegate != address(0)) {
             to = voters[to].delegate;
 
-            require(to != msg.sender, "Found loop in delegation");
+            require(to != msg.sender, "Found loop in delegation.");
         }
 
         Voter storage delegate_ = voters[to];
 
-        require(delegate_.weight >= 1);
+        require(delegate_.weight >= 1, "Delegate has no weight");
 
         sender.voted = true;
 
@@ -73,6 +96,15 @@ contract Ballot {
         } else {
             delegate_.weight += sender.weight;
         }
+
+        emit Delegated(
+            msg.sender,
+            to,
+            delegate_.weight,
+            delegate_.voted,
+            delegate_.vote,
+            proposals[delegate_.vote].voteCount
+        );
     }
 
     function vote(uint256 proposal) external {
@@ -84,6 +116,8 @@ contract Ballot {
         // If 'proposal is out of the rage of the array,
         // this will throw automatically and revert all changes
         proposals[proposal].voteCount += sender.weight;
+
+        emit Voted(msg.sender, proposal, sender.weight);
     }
 
     // TODO: What to do if there is a tie
