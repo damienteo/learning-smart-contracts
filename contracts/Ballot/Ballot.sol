@@ -85,7 +85,7 @@ contract Ballot {
 
         Voter storage delegate_ = voters[to];
 
-        require(delegate_.weight >= 1, "Delegate has no weight");
+        require(delegate_.weight >= 1, "Delegate does not have right to vote");
 
         sender.voted = true;
 
