@@ -4,7 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "npx hardhat test"
+    "test": "npx hardhat test",
+    "testParallel": "npx hardhat test --parallel",
+    "coverage": "npx hardhat coverage",
+    "reportGas": "REPORT_GAS=true npx hardhat test"
   },
   "keywords": [],
   "author": "",
