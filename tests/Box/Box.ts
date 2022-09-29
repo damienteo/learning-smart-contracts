@@ -37,7 +37,11 @@ describe("Box", function () {
       const storedValue = 123;
 
       await boxContract.store(storedValue);
-      expect(await boxContract.retrieve()).to.equal(storedValue);
+
+      // Note that we need to use strings to compare the 256 bit integers
+      expect((await boxContract.retrieve()).toString()).to.equal(
+        storedValue.toString()
+      );
     });
   });
 });
