@@ -25,3 +25,19 @@ deployGreeters()
     console.error(error);
     process.exit(1);
   });
+
+// const eventFilter = ballotContract.filters.NewVoter();
+// provider.on(eventFilter, (log) => {
+//   console.log("New voter");
+//   console.log({ log });
+// });
+// const eventFilter2 = ballotContract.filters.Voted();
+// provider.on(eventFilter2, (log) => {
+//   console.log("New vote cast");
+//   console.log({ log });
+// });
+// const eventFilter3 = ballotContract.filters.Delegated();
+// provider.on(eventFilter3, (log) => {
+//   console.log("New vote delegation");
+//   console.log({ log });
+// });

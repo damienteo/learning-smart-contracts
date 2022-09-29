@@ -22,6 +22,8 @@ contract Ballot {
 
     Proposal[] public proposals;
 
+    uint256 public totalVoteCount;
+
     event NewVoter(address indexed voter);
 
     event Delegated(
@@ -93,6 +95,7 @@ contract Ballot {
 
         if (delegate_.voted) {
             proposals[delegate_.vote].voteCount += sender.weight;
+            totalVoteCount += sender.weight;
         } else {
             delegate_.weight += sender.weight;
         }
@@ -113,15 +116,18 @@ contract Ballot {
         require(!sender.voted, "Already voted");
         sender.voted = true;
 
-        // If 'proposal is out of the rage of the array,
+        // If proposal is out of the rage of the array,
         // this will throw automatically and revert all changes
         proposals[proposal].voteCount += sender.weight;
+        totalVoteCount += sender.weight;
 
         emit Voted(msg.sender, proposal, sender.weight);
     }
 
     // TODO: What to do if there is a tie
     function winningProposal() public view returns (uint256 winningProposal_) {
+        require(totalVoteCount > 0, "There are no votes yet.");
+
         uint256 winningVoteCount = 0;
         for (uint256 p = 0; p < proposals.length; p++) {
             if (proposals[p].voteCount > winningVoteCount) {
