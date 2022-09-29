@@ -367,7 +367,7 @@ describe("Ballot", function () {
           votes.filter((v) => v === b).length
       )[votes.length - 1];
 
-      // TODO: Contract doe snot account for ties, which is why this test may occasionally fail
+      // TODO: Contract does not account for ties, which is why this test may occasionally fail
       console.log({ votes, winningVote });
 
       await ballotContract.giveRightToVote(addr1.address);
