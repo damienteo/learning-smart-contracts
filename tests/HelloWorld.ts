@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
 
-import { HelloWorldFour } from "../typechain-types/HelloWorld/HelloWorldFour.sol/HelloWorldFour";
+import { HelloWorldFour } from "../typechain-types/contracts/HelloWorld/HelloWorldFour.sol";
 
 const initialMsg = "Testing Hello World For the First Time ";
 const onlyOwnerError = "Caller is not owner";
