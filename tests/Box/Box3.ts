@@ -53,7 +53,34 @@ describe("Box3", function () {
   });
 
   describe("Upgrades", function () {
-    it("works before and after upgrading", async function () {
+    it("works before and after upgrading the same version of the contract", async function () {
+      const { box3Contract, owner } = await loadFixture(deployBox3LoadFixture);
+      await box3Contract.store(storedValue);
+      expect((await box3Contract.retrieve()).toString()).to.equal(
+        storedValue.toString()
+      );
+
+      const Box3 = await ethers.getContractFactory("Box3");
+      const nextBox3Contract = await upgrades.upgradeProxy(
+        box3Contract.address,
+        Box3
+      );
+      await nextBox3Contract.increment();
+      expect((await nextBox3Contract.retrieve()).toString()).to.equal(
+        (storedValue + 1).toString()
+      );
+
+      const subsequentBox3Contract = await upgrades.upgradeProxy(
+        box3Contract.address,
+        Box3
+      );
+      await subsequentBox3Contract.increment();
+      expect((await subsequentBox3Contract.retrieve()).toString()).to.equal(
+        (storedValue + 2).toString()
+      );
+    });
+
+    it("works before and after upgrading a subsequent version of the contract", async function () {
       const { box3Contract, owner } = await loadFixture(deployBox3LoadFixture);
       await box3Contract.store(storedValue);
       expect((await box3Contract.retrieve()).toString()).to.equal(
@@ -67,18 +94,20 @@ describe("Box3", function () {
         (storedValue + 1).toString()
       );
 
-      // Error: types/values length mismatch
-      // When passing args into upgradeProxy
-      // TODO: Figure out issue
-      // const Box3V2 = await ethers.getContractFactory("Box3V2");
-      // await upgrades.upgradeProxy(box3Contract.address, Box3V2, {
-      //   constructorArgs: [owner.address],
-      // });
-      // await box3Contract.increment();
-      // expect((await box3Contract.retrieve()).toString()).to.equal(
-      //   (storedValue + 2).toString()
-      // );
-      // expect(await box3Contract.retrieveAdmin()).to.equal(storedValue + 2);
+      const Box3V2 = await ethers.getContractFactory("Box3V2");
+      const box3V2Contract = await upgrades.upgradeProxy(
+        box3Contract.address,
+        Box3V2,
+        {
+          call: { fn: "initialize", args: [owner.address] },
+        }
+      );
+      await box3V2Contract.increment();
+      expect((await box3V2Contract.retrieve()).toString()).to.equal(
+        (storedValue + 2).toString()
+      );
+
+      expect(await box3V2Contract.retrieveAdmin()).to.equal(owner.address);
     });
   });
 });
