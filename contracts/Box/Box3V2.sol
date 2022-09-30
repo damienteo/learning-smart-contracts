@@ -15,9 +15,11 @@ contract Box3V2 is Initializable {
         _admin = admin;
     }
 
-    // constructor(address admin) initializer {
-    //     _admin = admin;
-    // }
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        // https://forum.openzeppelin.com/t/is-disableinitializers-necessary/31070
+        _disableInitializers();
+    }
 
     // Stores a new value in the contract
     function store(uint256 value) public {
