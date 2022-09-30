@@ -2,6 +2,8 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 
+const storedValue = 123;
+
 describe("Box2", function () {
   async function deployBox2LoadFixture() {
     const Box2 = await ethers.getContractFactory("Box2");
@@ -15,6 +17,13 @@ describe("Box2", function () {
     it("should not return an error if the administrator makes a store transaction", async function () {
       const { box2Contract } = await loadFixture(deployBox2LoadFixture);
       await expect(box2Contract.store(1)).to.not.be.reverted;
+    });
+
+    it("should emit ValueChanged when store value is called", async function () {
+      const { box2Contract } = await loadFixture(deployBox2LoadFixture);
+      await expect(box2Contract.store(storedValue))
+        .to.emit(box2Contract, "ValueChanged")
+        .withArgs(storedValue);
     });
 
     it("should return an error if a non-administrator makes a store transaction", async function () {
@@ -33,8 +42,6 @@ describe("Box2", function () {
 
     it("should return the correct value after the store method is called", async function () {
       const { box2Contract } = await loadFixture(deployBox2LoadFixture);
-
-      const storedValue = 123;
 
       await box2Contract.store(storedValue);
       // Note that we need to use strings to compare the 256 bit integers
