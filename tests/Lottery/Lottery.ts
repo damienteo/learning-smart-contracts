@@ -113,16 +113,15 @@ describe("Lottery", function () {
       const nextBalance = parseInt(
         ethers.utils.formatEther(await addr1.getBalance())
       );
-      const difference = initialBalance - nextBalance;
 
       expect(initialBalance).to.be.greaterThan(nextBalance);
-      expect(difference).to.be.greaterThan(parseInt(sentValue));
 
       await lotteryContract.pickWinner();
       const winningBalance = parseInt(
         ethers.utils.formatEther(await addr1.getBalance())
       );
       const nextDifference = initialBalance - winningBalance;
+
       expect(nextDifference).to.be.lessThan(parseInt(sentValue));
     });
   });
