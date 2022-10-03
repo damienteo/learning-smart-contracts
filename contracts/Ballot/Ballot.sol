@@ -79,6 +79,9 @@ contract Ballot {
         // Forward the delegation as long as 'to' also delegated
         // Such loops are dangerous because they might need more gas then available if they run too long
         // In this case, the delegation will not be executed
+
+        // Finds the final delegator
+        // TODO: Add test that will cause a chain of delegation that will inevitably lead back to msg.sender
         while (voters[to].delegate != address(0)) {
             to = voters[to].delegate;
 
