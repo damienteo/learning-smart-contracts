@@ -16,8 +16,6 @@ contract AccessControlToken is ERC20, AccessControl {
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
-    //TODO: Wht does adminRole in roleData do?
-
     function mint(address to, uint256 amount) public onlyRole(MINTER_ROLE) {
         // require(hasRole(MINTER_ROLE, msg.sender), "Caller is not a minter");
         _mint(to, amount);
