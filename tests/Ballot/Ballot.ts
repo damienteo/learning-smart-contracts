@@ -312,6 +312,29 @@ describe("Ballot", function () {
         "Self-delegation is disallowed."
       );
     });
+
+    it("Should stop delegation loops (delegation eventually points back to user)", async function () {
+      const { ballotContract, addr1, addr2, addr3, addr4, owner } =
+        await loadFixture(deployBallotLoadFixture);
+
+      const firstAddress = addr1.address;
+      const secondAddress = addr2.address;
+      const thirdAddress = addr3.address;
+      const fourthAddress = addr4.address;
+
+      await ballotContract.giveRightToVote(firstAddress);
+      await ballotContract.giveRightToVote(secondAddress);
+      await ballotContract.giveRightToVote(thirdAddress);
+      await ballotContract.giveRightToVote(fourthAddress);
+
+      await ballotContract.delegate(firstAddress);
+      await ballotContract.connect(addr1).delegate(secondAddress);
+      await ballotContract.connect(addr2).delegate(thirdAddress);
+      await ballotContract.connect(addr3).delegate(fourthAddress);
+      await expect(
+        ballotContract.connect(addr4).delegate(owner.address)
+      ).to.be.revertedWith("Found loop in delegation.");
+    });
   });
 
   describe("when someone interact with the winningProposal function", function () {
