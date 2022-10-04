@@ -126,6 +126,64 @@ describe("BasicERC20Token", function () {
           .to.emit(basicERC20TokenContract, "Approval")
           .withArgs(owner.address, addr1.address, INITIAL_SUPPLY);
       });
+
+      it("will still approve when approver has insufficient balance", async function () {
+        const { basicERC20TokenContract, owner, addr1 } = await loadFixture(
+          deployBasicERC20TokenLoadFixture
+        );
+
+        const nextAmount = INITIAL_SUPPLY + 1;
+
+        await basicERC20TokenContract.increaseAllowance(
+          addr1.address,
+          nextAmount,
+          {
+            from: owner.address,
+          }
+        );
+
+        expect(
+          await basicERC20TokenContract.allowance(owner.address, addr1.address)
+        ).to.be.equal(nextAmount);
+      });
+
+      it("will still approve when approver has insufficient balance, and when approvee already has approved amount", async function () {
+        const { basicERC20TokenContract, owner, addr1 } = await loadFixture(
+          deployBasicERC20TokenLoadFixture
+        );
+
+        const nextAmount = INITIAL_SUPPLY + 1;
+
+        basicERC20TokenContract.approve(addr1.address, INITIAL_SUPPLY, {
+          from: owner.address,
+        });
+
+        await basicERC20TokenContract.increaseAllowance(
+          addr1.address,
+          nextAmount,
+          {
+            from: owner.address,
+          }
+        );
+
+        expect(
+          await basicERC20TokenContract.allowance(owner.address, addr1.address)
+        ).to.be.equal(INITIAL_SUPPLY + nextAmount);
+      });
+
+      it("reverts when approvee is zero address", async function () {
+        const { basicERC20TokenContract, owner } = await loadFixture(
+          deployBasicERC20TokenLoadFixture
+        );
+
+        await expect(
+          basicERC20TokenContract.increaseAllowance(
+            ZERO_ADDRESS,
+            INITIAL_SUPPLY,
+            { from: owner.address }
+          )
+        ).to.be.revertedWith("ERC20: approve to the zero address");
+      });
     });
 
     //================================================================================
@@ -241,6 +299,176 @@ describe("BasicERC20Token", function () {
           ).to.be.revertedWith("ERC20: decreased allowance below zero");
         });
       });
+    });
+  });
+
+  //================================================================================
+  // Mint
+  //================================================================================
+
+  describe("Mint", async function () {
+    it("should reject a null account", async function () {
+      const { basicERC20TokenContract } = await loadFixture(
+        deployBasicERC20TokenLoadFixture
+      );
+
+      await expect(
+        basicERC20TokenContract.mint(ZERO_ADDRESS, INITIAL_SUPPLY)
+      ).to.be.revertedWith("ERC20: mint to the zero address");
+    });
+
+    it("Should increment total supply", async function () {
+      const { basicERC20TokenContract, addr1 } = await loadFixture(
+        deployBasicERC20TokenLoadFixture
+      );
+
+      const to = addr1.address;
+
+      await basicERC20TokenContract.mint(to, INITIAL_SUPPLY);
+
+      const decimals = await basicERC20TokenContract.decimals();
+      const supply = await basicERC20TokenContract.totalSupply();
+
+      const nextSupply = parseFloat(ethers.utils.formatUnits(supply, decimals));
+
+      expect(nextSupply).to.equal(INITIAL_SUPPLY * 2);
+    });
+
+    it("Should increment recipient balance", async function () {
+      const { basicERC20TokenContract, addr1 } = await loadFixture(
+        deployBasicERC20TokenLoadFixture
+      );
+
+      const to = addr1.address;
+
+      const prevBalance = await basicERC20TokenContract
+        .connect(addr1)
+        .balanceOf(addr1.address);
+      expect(prevBalance).to.equal(0);
+
+      await basicERC20TokenContract.mint(to, INITIAL_SUPPLY);
+
+      const decimals = await basicERC20TokenContract.decimals();
+      const balance = await basicERC20TokenContract
+        .connect(addr1)
+        .balanceOf(addr1.address);
+      const nextBalance = parseFloat(
+        ethers.utils.formatUnits(balance, decimals)
+      );
+
+      expect(nextBalance).to.equal(INITIAL_SUPPLY);
+    });
+
+    it("Should emit a Transfer event on mint", async function () {
+      const { basicERC20TokenContract, addr1 } = await loadFixture(
+        deployBasicERC20TokenLoadFixture
+      );
+
+      const to = addr1.address;
+
+      const decimals = await basicERC20TokenContract.decimals();
+      const nextTransferAmt = ethers.utils.parseUnits(
+        INITIAL_SUPPLY.toString(),
+        decimals
+      );
+
+      await expect(basicERC20TokenContract.mint(to, INITIAL_SUPPLY))
+        .to.emit(basicERC20TokenContract, "Transfer")
+        .withArgs(ZERO_ADDRESS, to, nextTransferAmt);
+    });
+  });
+
+  //================================================================================
+  // Burn
+  //================================================================================
+
+  describe("Burn", async function () {
+    it("should reject an account without tokens", async function () {
+      const { basicERC20TokenContract, addr1 } = await loadFixture(
+        deployBasicERC20TokenLoadFixture
+      );
+
+      await expect(
+        basicERC20TokenContract.connect(addr1).burn(INITIAL_SUPPLY)
+      ).to.be.revertedWith("ERC20: burn amount exceeds balance");
+    });
+
+    it("should reject an account with insufficient balance", async function () {
+      const { basicERC20TokenContract, addr1 } = await loadFixture(
+        deployBasicERC20TokenLoadFixture
+      );
+
+      await basicERC20TokenContract.mint(addr1.address, INITIAL_SUPPLY);
+
+      const decimals = await basicERC20TokenContract.decimals();
+      const toBurn = ethers.utils.parseUnits(
+        (INITIAL_SUPPLY + 1).toString(),
+        decimals
+      );
+
+      await expect(
+        basicERC20TokenContract.connect(addr1).burn(toBurn)
+      ).to.be.revertedWith("ERC20: burn amount exceeds balance");
+    });
+
+    it("Should decrement total supply", async function () {
+      const { basicERC20TokenContract } = await loadFixture(
+        deployBasicERC20TokenLoadFixture
+      );
+
+      const prevSupply = await basicERC20TokenContract.totalSupply();
+      const decimals = await basicERC20TokenContract.decimals();
+      const nextSupply =
+        parseFloat(ethers.utils.formatUnits(prevSupply, decimals)) -
+        INITIAL_SUPPLY;
+      await basicERC20TokenContract.burn(INITIAL_SUPPLY);
+
+      expect(await basicERC20TokenContract.totalSupply()).to.equal(nextSupply);
+    });
+
+    it("Should decrement user balance", async function () {
+      const { basicERC20TokenContract, addr1 } = await loadFixture(
+        deployBasicERC20TokenLoadFixture
+      );
+
+      const to = addr1.address;
+
+      await expect(basicERC20TokenContract.mint(to, INITIAL_SUPPLY * 2));
+
+      const prevBalance = await basicERC20TokenContract.balanceOf(
+        addr1.address
+      );
+
+      const decimals = await basicERC20TokenContract.decimals();
+      const nextSupply =
+        parseFloat(ethers.utils.formatUnits(prevBalance, decimals)) -
+        INITIAL_SUPPLY;
+      await basicERC20TokenContract.connect(addr1).burn(INITIAL_SUPPLY);
+
+      const resultingBalance = await basicERC20TokenContract.balanceOf(
+        addr1.address
+      );
+      const nextResult = parseFloat(
+        ethers.utils.formatUnits(resultingBalance, decimals)
+      );
+
+      expect(nextResult).to.equal(nextSupply);
+    });
+
+    it("Should emit a Transfer event on burn", async function () {
+      const { basicERC20TokenContract, owner } = await loadFixture(
+        deployBasicERC20TokenLoadFixture
+      );
+
+      const decimals = await basicERC20TokenContract.decimals();
+      const nextTransferAmt = ethers.utils.parseUnits(
+        INITIAL_SUPPLY.toString(),
+        decimals
+      );
+
+      await expect(basicERC20TokenContract.burn(INITIAL_SUPPLY))
+        .to.emit(basicERC20TokenContract, "Transfer")
+        .withArgs(owner.address, ZERO_ADDRESS, nextTransferAmt);
     });
   });
 
