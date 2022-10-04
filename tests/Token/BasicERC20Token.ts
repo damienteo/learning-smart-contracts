@@ -2,10 +2,11 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 
+import { ZERO_ADDRESS } from "../../constants/constants";
+
 const name = "BasicERC20Token";
 const symbol = "BET";
 const INITIAL_SUPPLY = 10000;
-const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
 describe("BasicERC20Token", function () {
   async function deployBasicERC20TokenLoadFixture() {
