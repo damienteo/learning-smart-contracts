@@ -81,7 +81,7 @@ describe("Basic721Token", function () {
       );
     });
 
-    it("reverts an error when tokenId is invalid", async function () {
+    it("reverts an error when tokenId is invalid/untracked", async function () {
       const { basic721TokenContract, addr1 } = await loadFixture(
         deployBasicERC20TokenLoadFixture
       );
