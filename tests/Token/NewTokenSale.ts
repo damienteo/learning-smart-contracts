@@ -15,6 +15,13 @@ describe("NewTokenSale", () => {
       newERC20Contract.address
     );
 
+    const MINTER_ROLE = await newERC20Contract.MINTER_ROLE();
+    const grantRoleTx = await newERC20Contract.grantRole(
+      MINTER_ROLE,
+      newTokenSaleContract.address
+    );
+    await grantRoleTx.wait();
+
     const [owner, addr1, addr2, addr3, addr4] = await ethers.getSigners();
 
     return {
@@ -29,22 +36,8 @@ describe("NewTokenSale", () => {
   }
 
   async function deployNewTokenSaleWithPurchaseLoadFixture() {
-    const {
-      newTokenSaleContract,
-      newERC20Contract,
-      owner,
-      addr1,
-      addr2,
-      addr3,
-      addr4,
-    } = await loadFixture(deployNewTokenSaleLoadFixture);
-
-    const MINTER_ROLE = await newERC20Contract.MINTER_ROLE();
-    const grantRoleTx = await newERC20Contract.grantRole(
-      MINTER_ROLE,
-      newTokenSaleContract.address
-    );
-    await grantRoleTx.wait();
+    const { newTokenSaleContract, newERC20Contract, addr1, ...rest } =
+      await loadFixture(deployNewTokenSaleLoadFixture);
 
     const amountToBeSent = ethers.utils.parseEther("1");
     const purchaseTokensTx = await newTokenSaleContract
@@ -57,11 +50,8 @@ describe("NewTokenSale", () => {
     return {
       newTokenSaleContract,
       newERC20Contract,
-      owner,
       addr1,
-      addr2,
-      addr3,
-      addr4,
+      ...rest,
       amountToBeSent,
     };
   }
@@ -95,18 +85,32 @@ describe("NewTokenSale", () => {
 
   describe("When a user purchase an ERC20 from the Token contract", async () => {
     it("charges the correct amount of ETH", async () => {
-      const {
-        newTokenSaleContract,
-        newERC20Contract,
-        owner,
-        addr1,
-        amountToBeSent,
-      } = await loadFixture(deployNewTokenSaleWithPurchaseLoadFixture);
+      const { newTokenSaleContract, addr1 } = await loadFixture(
+        deployNewTokenSaleLoadFixture
+      );
 
-      // const balance = await newERC20Contract.balanceOf(addr1.address);
-      // console.log({ balance });
-      // throw new Error("Not implemented");
+      const prevBalance = await addr1.getBalance();
+
+      const purchaseAmount = 2.5;
+
+      const amountToBeSent = ethers.utils.parseEther(purchaseAmount.toString());
+      const purchaseTokensTx = await newTokenSaleContract
+        .connect(addr1)
+        .purchaseTokens({
+          value: amountToBeSent,
+        });
+      await purchaseTokensTx.wait();
+
+      const nextBalance = await addr1.getBalance();
+
+      const difference =
+        parseFloat(ethers.utils.formatUnits(prevBalance)) -
+        parseFloat(ethers.utils.formatUnits(nextBalance));
+
+      expect(difference).to.be.greaterThan(purchaseAmount);
+      expect(difference).to.be.lessThan(purchaseAmount + 0.0002);
     });
+
     it("gives the correct amount of tokens", async () => {
       const { newERC20Contract, addr1, amountToBeSent } = await loadFixture(
         deployNewTokenSaleWithPurchaseLoadFixture
@@ -115,17 +119,35 @@ describe("NewTokenSale", () => {
       const balance = await newERC20Contract.balanceOf(addr1.address);
       expect(balance).to.equal(amountToBeSent.div(ERC20_TOKEN_RATIO));
     });
+
+    it("updates total supply with the correct amount of tokens", async () => {
+      const { newERC20Contract, amountToBeSent } = await loadFixture(
+        deployNewTokenSaleWithPurchaseLoadFixture
+      );
+
+      const supply = await newERC20Contract.totalSupply();
+      expect(supply).to.equal(amountToBeSent.div(ERC20_TOKEN_RATIO));
+    });
   });
 
-  // describe("When a user burns an ERC20 at the Token contract", async () => {
-  //   it("gives the correct amount of ETH", async () => {
-  //     // throw new Error("Not implemented");
-  //   });
+  describe("When a user burns an ERC20 at the Token contract", async () => {
+    it("gives the correct amount of ETH", async () => {
+      // const { newERC20Contract, addr1, amountToBeSent } = await loadFixture(
+      //   deployNewTokenSaleWithPurchaseLoadFixture
+      // );
+      // const balance = await newERC20Contract.balanceOf(addr1.address);
+      // const balanceToBurn = parseFloat(ethers.utils.formatUnits(balance)) / 2;
+      // await newERC20Contract.balanceOf(addr1.address);
+    });
 
-  //   it("burns the correct amount of tokens", async () => {
-  //     // throw new Error("Not implemented");
-  //   });
-  // });
+    it("burns the correct amount of tokens", async () => {
+      // const { newERC20Contract, addr1, amountToBeSent } = await loadFixture(
+      //   deployNewTokenSaleWithPurchaseLoadFixture
+      // );
+      // const balance = await newERC20Contract.balanceOf(addr1.address);
+      // expect(balance).to.equal(amountToBeSent.div(ERC20_TOKEN_RATIO));
+    });
+  });
 
   describe("When a user purchase a NFT from the Shop contract", async () => {
     // it("charges the correct amount of ETH", async () => {
