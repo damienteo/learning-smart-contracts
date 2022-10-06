@@ -3,16 +3,22 @@ import { ethers } from "hardhat";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 
 const ERC20_TOKEN_RATIO = 5;
+const NFT_TOKEN_PRICE = 2;
 
 describe("NewTokenSale", () => {
   async function deployNewTokenSaleLoadFixture() {
     const NewERC20Token = await ethers.getContractFactory("NewERC20Token");
     const newERC20Contract = await NewERC20Token.deploy();
 
+    const NewERC721Token = await ethers.getContractFactory("NewERC721Token");
+    const newERC721Contract = await NewERC721Token.deploy();
+
     const NewTokenSale = await ethers.getContractFactory("NewTokenSale");
     const newTokenSaleContract = await NewTokenSale.deploy(
       ERC20_TOKEN_RATIO,
-      newERC20Contract.address
+      NFT_TOKEN_PRICE,
+      newERC20Contract.address,
+      newERC721Contract.address
     );
 
     const MINTER_ROLE = await newERC20Contract.MINTER_ROLE();
@@ -27,6 +33,7 @@ describe("NewTokenSale", () => {
     return {
       newTokenSaleContract,
       newERC20Contract,
+      newERC721Contract,
       owner,
       addr1,
       addr2,
@@ -40,6 +47,7 @@ describe("NewTokenSale", () => {
       await loadFixture(deployNewTokenSaleLoadFixture);
 
     const amountToBeSent = ethers.utils.parseEther("1");
+    const amountToBeReceived = amountToBeSent.div(ERC20_TOKEN_RATIO);
     const purchaseTokensTx = await newTokenSaleContract
       .connect(addr1)
       .purchaseTokens({
@@ -53,6 +61,34 @@ describe("NewTokenSale", () => {
       addr1,
       ...rest,
       amountToBeSent,
+      amountToBeReceived,
+    };
+  }
+
+  async function deployNewTokenSaleWithPurchaseAndAllowLoadFixture() {
+    const {
+      newTokenSaleContract,
+      newERC20Contract,
+      addr1,
+      amountToBeSent,
+      ...rest
+    } = await loadFixture(deployNewTokenSaleWithPurchaseLoadFixture);
+
+    const allowTransaction = await newERC20Contract
+      .connect(addr1)
+      .approve(newTokenSaleContract.address, amountToBeSent);
+    const allowTransactionReceipt = await allowTransaction.wait();
+    const allowGasUnitsUsed = allowTransactionReceipt.gasUsed;
+    const allowGasPrice = allowTransactionReceipt.effectiveGasPrice;
+    const allowGasCost = allowGasUnitsUsed.mul(allowGasPrice);
+
+    return {
+      newTokenSaleContract,
+      newERC20Contract,
+      addr1,
+      amountToBeSent,
+      ...rest,
+      allowGasCost,
     };
   }
 
@@ -86,7 +122,7 @@ describe("NewTokenSale", () => {
   describe("When a user purchase an ERC20 from the Token contract", async () => {
     it("charges the correct amount of ETH", async () => {
       const { newTokenSaleContract, addr1 } = await loadFixture(
-        deployNewTokenSaleLoadFixture
+        deployNewTokenSaleWithPurchaseLoadFixture
       );
 
       const prevBalance = await addr1.getBalance();
@@ -99,25 +135,32 @@ describe("NewTokenSale", () => {
         .purchaseTokens({
           value: amountToBeSent,
         });
-      await purchaseTokensTx.wait();
+      const purchaseTokensReceipt = await purchaseTokensTx.wait();
+      const gasUnitsUsed = purchaseTokensReceipt.gasUsed;
+      const gasPrice = purchaseTokensReceipt.effectiveGasPrice;
+      const gasCost = gasUnitsUsed.mul(gasPrice);
 
       const nextBalance = await addr1.getBalance();
 
-      const difference =
-        parseFloat(ethers.utils.formatUnits(prevBalance)) -
-        parseFloat(ethers.utils.formatUnits(nextBalance));
+      const diff = prevBalance.sub(nextBalance);
+      console.log({ nextBalance, prevBalance, diff });
+      expect(diff).to.be.equal(gasCost.add(amountToBeSent));
 
-      expect(difference).to.be.greaterThan(purchaseAmount);
-      expect(difference).to.be.lessThan(purchaseAmount + 0.0002);
+      // const difference =
+      //   parseFloat(ethers.utils.formatUnits(prevBalance)) -
+      //   parseFloat(ethers.utils.formatUnits(nextBalance));
+
+      // expect(difference).to.be.greaterThan(purchaseAmount);
+      // expect(difference).to.be.lessThan(purchaseAmount + 0.0002);
     });
 
     it("gives the correct amount of tokens", async () => {
-      const { newERC20Contract, addr1, amountToBeSent } = await loadFixture(
+      const { newERC20Contract, addr1, amountToBeReceived } = await loadFixture(
         deployNewTokenSaleWithPurchaseLoadFixture
       );
 
       const balance = await newERC20Contract.balanceOf(addr1.address);
-      expect(balance).to.equal(amountToBeSent.div(ERC20_TOKEN_RATIO));
+      expect(balance).to.equal(amountToBeReceived);
     });
 
     it("updates total supply with the correct amount of tokens", async () => {
@@ -128,24 +171,72 @@ describe("NewTokenSale", () => {
       const supply = await newERC20Contract.totalSupply();
       expect(supply).to.equal(amountToBeSent.div(ERC20_TOKEN_RATIO));
     });
+
+    it("increases the balance of Eth in the contract", async () => {
+      const { newTokenSaleContract, amountToBeSent } = await loadFixture(
+        deployNewTokenSaleWithPurchaseLoadFixture
+      );
+
+      const balance = await ethers.provider.getBalance(
+        newTokenSaleContract.address
+      );
+
+      expect(balance).to.equal(amountToBeSent);
+    });
   });
 
   describe("When a user burns an ERC20 at the Token contract", async () => {
     it("gives the correct amount of ETH", async () => {
-      // const { newERC20Contract, addr1, amountToBeSent } = await loadFixture(
-      //   deployNewTokenSaleWithPurchaseLoadFixture
-      // );
-      // const balance = await newERC20Contract.balanceOf(addr1.address);
-      // const balanceToBurn = parseFloat(ethers.utils.formatUnits(balance)) / 2;
-      // await newERC20Contract.balanceOf(addr1.address);
+      const {
+        newTokenSaleContract,
+        addr1,
+        amountToBeSent, // This is in Eth
+        amountToBeReceived, // This is in NET
+      } = await loadFixture(deployNewTokenSaleWithPurchaseAndAllowLoadFixture);
+
+      const balance = await addr1.getBalance();
+
+      const burnTokensTx = await newTokenSaleContract
+        .connect(addr1)
+        .burnTokens(amountToBeReceived);
+      const burnTokensReceipt = await burnTokensTx.wait();
+      const burnGasUnitsUsed = burnTokensReceipt.gasUsed;
+      const burnGasPrice = burnTokensReceipt.effectiveGasPrice;
+      const burnGasCost = burnGasUnitsUsed.mul(burnGasPrice);
+
+      const nextBalance = await addr1.getBalance();
+
+      const diff = nextBalance.sub(balance);
+      const diffWithoutGasCost = diff.add(burnGasCost);
+
+      expect(diffWithoutGasCost).to.equal(amountToBeSent);
     });
 
     it("burns the correct amount of tokens", async () => {
-      // const { newERC20Contract, addr1, amountToBeSent } = await loadFixture(
-      //   deployNewTokenSaleWithPurchaseLoadFixture
-      // );
-      // const balance = await newERC20Contract.balanceOf(addr1.address);
-      // expect(balance).to.equal(amountToBeSent.div(ERC20_TOKEN_RATIO));
+      const {
+        newTokenSaleContract,
+        newERC20Contract,
+        addr1,
+        amountToBeReceived,
+      } = await loadFixture(deployNewTokenSaleWithPurchaseAndAllowLoadFixture);
+      const prevBalance = await newERC20Contract.balanceOf(addr1.address);
+
+      const burnTokensTx = await newTokenSaleContract
+        .connect(addr1)
+        .burnTokens(amountToBeReceived);
+      await burnTokensTx.wait();
+
+      const balance = await newERC20Contract.balanceOf(addr1.address);
+      expect(balance).to.equal(0);
+    });
+
+    it("should return an error if the user did not give approval", async () => {
+      const { newTokenSaleContract, addr1, amountToBeReceived } =
+        await loadFixture(deployNewTokenSaleWithPurchaseLoadFixture);
+
+      await expect(
+        newTokenSaleContract.connect(addr1).burnTokens(amountToBeReceived)
+      ).to.be.revertedWith("ERC20: insufficient allowance");
     });
   });
 
