@@ -3,7 +3,8 @@ import { ethers } from "hardhat";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 
 const ERC20_TOKEN_RATIO = 5;
-const NFT_TOKEN_PRICE = 2;
+const NFT_TOKEN_PRICE = 5;
+const TOKEN_ID = 1;
 
 describe("NewTokenSale", () => {
   async function deployNewTokenSaleLoadFixture() {
@@ -21,12 +22,19 @@ describe("NewTokenSale", () => {
       newERC721Contract.address
     );
 
-    const MINTER_ROLE = await newERC20Contract.MINTER_ROLE();
-    const grantRoleTx = await newERC20Contract.grantRole(
-      MINTER_ROLE,
+    const TOKEN_MINTER_ROLE = await newERC20Contract.MINTER_ROLE();
+    const grantTokenRoleTx = await newERC20Contract.grantRole(
+      TOKEN_MINTER_ROLE,
       newTokenSaleContract.address
     );
-    await grantRoleTx.wait();
+    await grantTokenRoleTx.wait();
+
+    const NFT_MINTER_ROLE = await newERC721Contract.MINTER_ROLE();
+    const grantNFToleTx = await newERC721Contract.grantRole(
+      NFT_MINTER_ROLE,
+      newTokenSaleContract.address
+    );
+    await grantNFToleTx.wait();
 
     const [owner, addr1, addr2, addr3, addr4] = await ethers.getSigners();
 
@@ -92,6 +100,23 @@ describe("NewTokenSale", () => {
     };
   }
 
+  // async function deployNewTokenSaleWithPurchaseNFTLoadFixture() {
+  //   const { newTokenSaleContract, newERC20Contract, addr1, ...rest } =
+  //     await loadFixture(deployNewTokenSaleWithPurchaseAndAllowLoadFixture);
+
+  //   const purchaseNFTTx = await newTokenSaleContract
+  //     .connect(addr1)
+  //     .purchaseNFT(TOKEN_ID);
+  //   await purchaseNFTTx.wait();
+
+  //   return {
+  //     newTokenSaleContract,
+  //     newERC20Contract,
+  //     addr1,
+  //     ...rest,
+  //   };
+  // }
+
   describe("When the Shop contract is deployed", async () => {
     it("defines the ratio as provided in parameters", async () => {
       const { newTokenSaleContract } = await loadFixture(
@@ -143,7 +168,7 @@ describe("NewTokenSale", () => {
       const nextBalance = await addr1.getBalance();
 
       const diff = prevBalance.sub(nextBalance);
-      console.log({ nextBalance, prevBalance, diff });
+
       expect(diff).to.be.equal(gasCost.add(amountToBeSent));
 
       // const difference =
@@ -219,8 +244,6 @@ describe("NewTokenSale", () => {
         addr1,
         amountToBeReceived,
       } = await loadFixture(deployNewTokenSaleWithPurchaseAndAllowLoadFixture);
-      const prevBalance = await newERC20Contract.balanceOf(addr1.address);
-
       const burnTokensTx = await newTokenSaleContract
         .connect(addr1)
         .burnTokens(amountToBeReceived);
@@ -228,6 +251,16 @@ describe("NewTokenSale", () => {
 
       const balance = await newERC20Contract.balanceOf(addr1.address);
       expect(balance).to.equal(0);
+    });
+
+    it("should return an error if the user does not have sufficient tokens to burn", async () => {
+      const { newTokenSaleContract, addr1, amountToBeReceived } =
+        await loadFixture(deployNewTokenSaleWithPurchaseAndAllowLoadFixture);
+      await expect(
+        newTokenSaleContract
+          .connect(addr1)
+          .burnTokens(amountToBeReceived.add(1))
+      ).to.be.revertedWith("ERC20: burn amount exceeds balance");
     });
 
     it("should return an error if the user did not give approval", async () => {
@@ -241,9 +274,25 @@ describe("NewTokenSale", () => {
   });
 
   describe("When a user purchase a NFT from the Shop contract", async () => {
-    // it("charges the correct amount of ETH", async () => {
-    //   throw new Error("Not implemented");
-    // });
+    it("charges the correct amount of NET Tokens", async () => {
+      const { newTokenSaleContract, newERC20Contract, addr1, amountToBeSent } =
+        await loadFixture(deployNewTokenSaleWithPurchaseLoadFixture);
+
+      const allowTransaction = await newERC20Contract
+        .connect(addr1)
+        .approve(newTokenSaleContract.address, amountToBeSent);
+      await allowTransaction.wait();
+
+      const prevBalance = await newERC20Contract.balanceOf(addr1.address);
+      const purchaseNFTTx = await newTokenSaleContract
+        .connect(addr1)
+        .purchaseNFT(TOKEN_ID);
+      await purchaseNFTTx.wait();
+      const nextBalance = await newERC20Contract.balanceOf(addr1.address);
+      const diff = prevBalance.sub(nextBalance);
+
+      expect(diff).to.equal(NFT_TOKEN_PRICE);
+    });
     // it("updates the owner account correctly", async () => {
     //   throw new Error("Not implemented");
     // });

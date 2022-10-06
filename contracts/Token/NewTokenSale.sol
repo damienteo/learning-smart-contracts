@@ -21,7 +21,7 @@ interface INewERC721Token is IERC721 {
 contract NewTokenSale is Ownable {
     /// Purchase ratio between ERC20 Token and Eth
     uint256 public ratio;
-    uint256 public tokenPrice;
+    uint256 public nftPrice;
     INewERC20Token public paymentToken;
     INewERC721Token public nftContract;
     uint256 public adminPool; // amount reserved for users to withdraw
@@ -29,12 +29,12 @@ contract NewTokenSale is Ownable {
 
     constructor(
         uint256 _ratio,
-        uint256 _tokenPrice,
+        uint256 _nftPrice,
         address _paymentToken,
         address _nftContract
     ) {
         ratio = _ratio;
-        tokenPrice = _tokenPrice;
+        nftPrice = _nftPrice;
         paymentToken = INewERC20Token(_paymentToken);
         nftContract = INewERC721Token(_nftContract);
     }
@@ -53,18 +53,18 @@ contract NewTokenSale is Ownable {
     }
 
     function purchaseNFT(uint256 tokenId) public {
-        uint256 charge = tokenPrice / 2;
+        uint256 charge = nftPrice / 2;
 
         adminPool += charge;
-        publicPool += tokenPrice - charge;
+        publicPool += nftPrice - charge;
 
-        paymentToken.transferFrom(msg.sender, address(this), tokenPrice);
+        paymentToken.transferFrom(msg.sender, address(this), nftPrice);
         nftContract.safeMint(msg.sender, tokenId);
     }
 
     function burnNFT(uint256 tokenId) public {
         nftContract.burn(tokenId);
-        paymentToken.transfer(msg.sender, tokenPrice / 2);
+        paymentToken.transfer(msg.sender, nftPrice / 2);
     }
 
     function withdraw(uint256 amount) public onlyOwner {
