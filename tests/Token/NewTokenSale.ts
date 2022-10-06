@@ -100,23 +100,6 @@ describe("NewTokenSale", () => {
     };
   }
 
-  // async function deployNewTokenSaleWithPurchaseNFTLoadFixture() {
-  //   const { newTokenSaleContract, newERC20Contract, addr1, ...rest } =
-  //     await loadFixture(deployNewTokenSaleWithPurchaseAndAllowLoadFixture);
-
-  //   const purchaseNFTTx = await newTokenSaleContract
-  //     .connect(addr1)
-  //     .purchaseNFT(TOKEN_ID);
-  //   await purchaseNFTTx.wait();
-
-  //   return {
-  //     newTokenSaleContract,
-  //     newERC20Contract,
-  //     addr1,
-  //     ...rest,
-  //   };
-  // }
-
   describe("When the Shop contract is deployed", async () => {
     it("defines the ratio as provided in parameters", async () => {
       const { newTokenSaleContract } = await loadFixture(
@@ -293,15 +276,80 @@ describe("NewTokenSale", () => {
 
       expect(diff).to.equal(NFT_TOKEN_PRICE);
     });
-    // it("updates the owner account correctly", async () => {
-    //   throw new Error("Not implemented");
-    // });
-    // it("update the pool account correctly", async () => {
-    //   throw new Error("Not implemented");
-    // });
-    // it("favors the pool with the rounding", async () => {
-    //   throw new Error("Not implemented");
-    // });
+    it("updates the owner account correctly", async () => {
+      const {
+        newTokenSaleContract,
+        newERC20Contract,
+        newERC721Contract,
+        addr1,
+        amountToBeSent,
+      } = await loadFixture(deployNewTokenSaleWithPurchaseLoadFixture);
+
+      const allowTransaction = await newERC20Contract
+        .connect(addr1)
+        .approve(newTokenSaleContract.address, amountToBeSent);
+      await allowTransaction.wait();
+
+      const purchaseNFTTx = await newTokenSaleContract
+        .connect(addr1)
+        .purchaseNFT(TOKEN_ID);
+      await purchaseNFTTx.wait();
+
+      const owner = await newERC721Contract.ownerOf(TOKEN_ID);
+      expect(owner).to.equal(addr1.address);
+
+      const ownerBalance = await newERC721Contract.balanceOf(addr1.address);
+      expect(ownerBalance).to.equal(1);
+    });
+
+    it("update the pool accounts correctly", async () => {
+      const { newTokenSaleContract, newERC20Contract, addr1, amountToBeSent } =
+        await loadFixture(deployNewTokenSaleWithPurchaseLoadFixture);
+
+      const prevAdminPool = await newTokenSaleContract.adminPool();
+      const prevPublicPool = await newTokenSaleContract.publicPool();
+
+      expect(prevAdminPool).to.equal(0);
+      expect(prevPublicPool).to.equal(0);
+
+      const allowTransaction = await newERC20Contract
+        .connect(addr1)
+        .approve(newTokenSaleContract.address, amountToBeSent);
+      await allowTransaction.wait();
+
+      const purchaseNFTTx = await newTokenSaleContract
+        .connect(addr1)
+        .purchaseNFT(TOKEN_ID);
+      await purchaseNFTTx.wait();
+
+      const nextAdminPool = await newTokenSaleContract.adminPool();
+      const nextPublicPool = await newTokenSaleContract.publicPool();
+
+      const charge = Math.floor(NFT_TOKEN_PRICE / 2);
+
+      expect(nextAdminPool).to.equal(NFT_TOKEN_PRICE - charge);
+      expect(nextPublicPool).to.equal(charge);
+    });
+
+    it("favors the admin pool with the rounding", async () => {
+      const { newTokenSaleContract, newERC20Contract, addr1, amountToBeSent } =
+        await loadFixture(deployNewTokenSaleWithPurchaseLoadFixture);
+
+      const allowTransaction = await newERC20Contract
+        .connect(addr1)
+        .approve(newTokenSaleContract.address, amountToBeSent);
+      await allowTransaction.wait();
+
+      const purchaseNFTTx = await newTokenSaleContract
+        .connect(addr1)
+        .purchaseNFT(TOKEN_ID);
+      await purchaseNFTTx.wait();
+
+      const publicPool = await newTokenSaleContract.publicPool();
+      const adminPool = await newTokenSaleContract.adminPool();
+
+      expect(adminPool).to.be.greaterThan(publicPool);
+    });
   });
 
   describe("When a user burns their NFT at the Shop contract", async () => {

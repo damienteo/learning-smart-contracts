@@ -55,8 +55,8 @@ contract NewTokenSale is Ownable {
     function purchaseNFT(uint256 tokenId) public {
         uint256 charge = nftPrice / 2;
 
-        adminPool += charge;
-        publicPool += nftPrice - charge;
+        publicPool += charge;
+        adminPool += nftPrice - charge;
 
         paymentToken.transferFrom(msg.sender, address(this), nftPrice);
         nftContract.safeMint(msg.sender, tokenId);
@@ -64,6 +64,7 @@ contract NewTokenSale is Ownable {
 
     function burnNFT(uint256 tokenId) public {
         nftContract.burn(tokenId);
+        publicPool -= nftPrice / 2;
         paymentToken.transfer(msg.sender, nftPrice / 2);
     }
 
