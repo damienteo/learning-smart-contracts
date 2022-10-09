@@ -12,19 +12,22 @@ const INITIAL_SUPPLY = 10 * 10 ** 18;
 describe("BasicERC20Votes", async () => {
   let BasicERC20Votes, basicERC20VotesContract: BasicERC20Votes;
 
-  const [owner] = await ethers.getSigners();
-
   beforeEach(async () => {
     BasicERC20Votes = await ethers.getContractFactory("BasicERC20Votes");
     basicERC20VotesContract = await BasicERC20Votes.deploy();
   });
 
   describe("deployment", async () => {
+    console.log("???");
     it("should have initial nonce of 0", async () => {
+      const [owner] = await ethers.getSigners();
       expect(await basicERC20VotesContract.nonces(owner.address)).to.be.equal(
         0
       );
     });
+    // it("throws an error", async () => {
+    //   throw new Error("lol");
+    // });
   });
 });
 
