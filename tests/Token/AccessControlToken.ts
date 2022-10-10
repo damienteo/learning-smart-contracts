@@ -6,8 +6,12 @@ import { AccessControlToken } from "../../typechain-types/contracts/Token";
 
 const DEFAULT_ADMIN_ROLE =
   "0x0000000000000000000000000000000000000000000000000000000000000000";
-const MINTER_ROLE = ethers.utils.formatBytes32String("MINTER_ROLE");
-const ASST_ADMIN_ROLE = ethers.utils.formatBytes32String("ASST_ADMIN_ROLE");
+const MINTER_ROLE = ethers.utils.keccak256(
+  ethers.utils.toUtf8Bytes("MINTER_ROLE")
+);
+const ASST_ADMIN_ROLE = ethers.utils.keccak256(
+  ethers.utils.toUtf8Bytes("ASST_ADMIN_ROLE")
+);
 
 describe("AccessControlToken", () => {
   let AccessControlToken,
@@ -264,6 +268,30 @@ describe("AccessControlToken", () => {
         accessControlTokenContract.revokeRole(MINTER_ROLE, addr2.address)
       ).to.be.revertedWith(
         `AccessControl: account ${owner.address.toLowerCase()} is missing role ${ASST_ADMIN_ROLE}`
+      );
+    });
+  });
+
+  describe("onlyRole modifier", async () => {
+    beforeEach(async () => {
+      await accessControlTokenContract.grantRole(MINTER_ROLE, addr1.address);
+    });
+
+    it("does not revert if address has role", async () => {
+      expect(
+        await accessControlTokenContract.hasRole(MINTER_ROLE, addr1.address)
+      ).to.equal(true);
+
+      await expect(
+        accessControlTokenContract.connect(addr1).mint(addr2.address, 100)
+      ).to.not.be.reverted;
+    });
+
+    it("does not allow addresses without roles to call the modified method", async () => {
+      await expect(
+        accessControlTokenContract.connect(addr2).mint(addr2.address, 100)
+      ).to.be.revertedWith(
+        `AccessControl: account ${addr2.address.toLowerCase()} is missing role ${MINTER_ROLE}`
       );
     });
   });
