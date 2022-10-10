@@ -7,6 +7,7 @@ import { AccessControlToken } from "../../typechain-types/contracts/Token";
 const DEFAULT_ADMIN_ROLE =
   "0x0000000000000000000000000000000000000000000000000000000000000000";
 const MINTER_ROLE = ethers.utils.formatBytes32String("MINTER_ROLE");
+const ASST_ADMIN_ROLE = ethers.utils.formatBytes32String("ASST_ADMIN_ROLE");
 
 describe("AccessControlToken", () => {
   let AccessControlToken,
@@ -87,6 +88,183 @@ describe("AccessControlToken", () => {
       await expect(
         accessControlTokenContract.grantRole(MINTER_ROLE, addr3.address)
       ).to.not.emit(accessControlTokenContract, "RoleGranted");
+    });
+  });
+
+  describe("revoking", () => {
+    it("cannot revoke roles that were not granted", async () => {
+      expect(
+        await accessControlTokenContract.hasRole(MINTER_ROLE, addr1.address)
+      ).to.equal(false);
+
+      await expect(
+        accessControlTokenContract.grantRole(MINTER_ROLE, addr1.address)
+      ).to.not.emit(accessControlTokenContract, "RoleRevoked");
+    });
+
+    context("with granted role", async () => {
+      beforeEach(async () => {
+        await accessControlTokenContract.grantRole(MINTER_ROLE, addr1.address);
+      });
+
+      it("allows admin to revoke the role", async () => {
+        await expect(
+          accessControlTokenContract.revokeRole(MINTER_ROLE, addr1.address)
+        )
+          .to.emit(accessControlTokenContract, "RoleRevoked")
+          .withArgs(MINTER_ROLE, addr1.address, owner.address);
+
+        expect(
+          await accessControlTokenContract.hasRole(MINTER_ROLE, addr1.address)
+        ).to.equal(false);
+      });
+
+      it("does not allow non-admin to revoke the role", async () => {
+        await expect(
+          accessControlTokenContract
+            .connect(addr2)
+            .revokeRole(MINTER_ROLE, addr1.address)
+        ).to.be.revertedWith(
+          `AccessControl: account ${addr2.address.toLowerCase()} is missing role ${DEFAULT_ADMIN_ROLE}`
+        );
+
+        expect(
+          await accessControlTokenContract.hasRole(MINTER_ROLE, addr1.address)
+        ).to.equal(true);
+      });
+
+      it("allows admin to revoke the role multiple times", async () => {
+        await expect(
+          accessControlTokenContract.revokeRole(MINTER_ROLE, addr1.address)
+        )
+          .to.emit(accessControlTokenContract, "RoleRevoked")
+          .withArgs(MINTER_ROLE, addr1.address, owner.address);
+
+        await expect(
+          accessControlTokenContract.revokeRole(MINTER_ROLE, addr1.address)
+        ).not.to.emit(accessControlTokenContract, "RoleRevoked");
+      });
+    });
+  });
+
+  describe("renouncing", async () => {
+    it("does not allow wallets without roles to renounce", async () => {
+      expect(
+        await accessControlTokenContract.hasRole(MINTER_ROLE, addr1.address)
+      ).to.equal(false);
+
+      await expect(
+        accessControlTokenContract
+          .connect(addr1)
+          .renounceRole(MINTER_ROLE, addr1.address)
+      ).to.not.emit(accessControlTokenContract, "RoleRevoked");
+    });
+
+    context("with granted role", async () => {
+      beforeEach(async () => {
+        await accessControlTokenContract.grantRole(MINTER_ROLE, addr1.address);
+      });
+
+      it("allows the bearer to renounce role", async () => {
+        expect(
+          await accessControlTokenContract.hasRole(MINTER_ROLE, addr1.address)
+        ).to.equal(true);
+
+        await expect(
+          accessControlTokenContract
+            .connect(addr1)
+            .renounceRole(MINTER_ROLE, addr1.address)
+        )
+          .to.emit(accessControlTokenContract, "RoleRevoked")
+          .withArgs(MINTER_ROLE, addr1.address, addr1.address);
+
+        expect(
+          await accessControlTokenContract.hasRole(MINTER_ROLE, addr1.address)
+        ).to.equal(false);
+      });
+
+      it("only allows bearers to renounce roles", async () => {
+        await expect(
+          accessControlTokenContract.renounceRole(MINTER_ROLE, addr1.address)
+        ).to.be.revertedWith("AccessControl: can only renounce roles for self");
+      });
+
+      it("allows roles to be renounced multiple times", async () => {
+        await accessControlTokenContract
+          .connect(addr1)
+          .renounceRole(MINTER_ROLE, addr1.address);
+
+        await expect(
+          accessControlTokenContract
+            .connect(addr1)
+            .renounceRole(MINTER_ROLE, addr1.address)
+        ).to.not.emit(accessControlTokenContract, "RoleRevoked");
+      });
+    });
+  });
+
+  describe("setting role admin", () => {
+    beforeEach(async () => {
+      await expect(
+        accessControlTokenContract.setRoleAdmin(MINTER_ROLE, ASST_ADMIN_ROLE)
+      )
+        .to.emit(accessControlTokenContract, "RoleAdminChanged")
+        .withArgs(MINTER_ROLE, DEFAULT_ADMIN_ROLE, ASST_ADMIN_ROLE);
+
+      await accessControlTokenContract.grantRole(
+        ASST_ADMIN_ROLE,
+        addr1.address
+      );
+    });
+
+    it("can change the admin role", async () => {
+      expect(
+        await accessControlTokenContract.getRoleAdmin(MINTER_ROLE)
+      ).to.equal(ASST_ADMIN_ROLE);
+    });
+
+    it("allows new admin to grant role", async () => {
+      await expect(
+        accessControlTokenContract
+          .connect(addr1)
+          .grantRole(MINTER_ROLE, addr2.address)
+      )
+        .to.emit(accessControlTokenContract, "RoleGranted")
+        .withArgs(MINTER_ROLE, addr2.address, addr1.address);
+
+      expect(
+        await accessControlTokenContract.hasRole(MINTER_ROLE, addr2.address)
+      ).to.equal(true);
+    });
+
+    it("allows new admin to revoke roles", async () => {
+      await accessControlTokenContract
+        .connect(addr1)
+        .grantRole(MINTER_ROLE, addr2.address);
+
+      await expect(
+        accessControlTokenContract
+          .connect(addr1)
+          .revokeRole(MINTER_ROLE, addr2.address)
+      )
+        .to.emit(accessControlTokenContract, "RoleRevoked")
+        .withArgs(MINTER_ROLE, addr2.address, addr1.address);
+    });
+
+    it("does not allow previous admin to grant role", async () => {
+      await expect(
+        accessControlTokenContract.grantRole(MINTER_ROLE, addr2.address)
+      ).to.be.revertedWith(
+        `AccessControl: account ${owner.address.toLowerCase()} is missing role ${ASST_ADMIN_ROLE}`
+      );
+    });
+
+    it("does not allow previous admin to revoke role", async () => {
+      await expect(
+        accessControlTokenContract.revokeRole(MINTER_ROLE, addr2.address)
+      ).to.be.revertedWith(
+        `AccessControl: account ${owner.address.toLowerCase()} is missing role ${ASST_ADMIN_ROLE}`
+      );
     });
   });
 });

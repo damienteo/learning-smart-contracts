@@ -24,4 +24,11 @@ contract AccessControlToken is ERC20, AccessControl {
     function burn(address from, uint256 amount) public onlyRole(BURNER_ROLE) {
         _burn(from, amount);
     }
+
+    function setRoleAdmin(bytes32 role, bytes32 adminRole)
+        public
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        _setRoleAdmin(role, adminRole);
+    }
 }
