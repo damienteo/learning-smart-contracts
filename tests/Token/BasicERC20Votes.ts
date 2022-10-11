@@ -18,7 +18,6 @@ describe("BasicERC20Votes", async () => {
   });
 
   describe("deployment", async () => {
-    console.log("???");
     it("should have initial nonce of 0", async () => {
       const [owner] = await ethers.getSigners();
       expect(await basicERC20VotesContract.nonces(owner.address)).to.be.equal(
