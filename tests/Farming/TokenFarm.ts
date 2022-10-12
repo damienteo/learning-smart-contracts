@@ -9,7 +9,6 @@ import {
   RewardToken,
   StakingToken,
 } from "../../typechain-types/contracts/Farming";
-import { token } from "../../typechain-types/contracts";
 
 const MINTING_AMOUNT: BigNumber = ethers.utils.parseEther("100");
 const DURATION_CHANGE: number = 86400; // number of seconds in a day
@@ -41,12 +40,6 @@ describe("TokenFarm", () => {
   });
 
   describe("deployment", async () => {
-    it("should initialise contracts", async () => {
-      expect(await rewardToken).to.be.ok;
-      expect(await stakingToken).to.be.ok;
-      expect(await tokenFarm).to.be.ok;
-    });
-
     it("should not have staking balances for addresses", async () => {
       expect(await tokenFarm.stakingBalance(addr1.address)).to.equal(0);
     });
@@ -79,6 +72,17 @@ describe("TokenFarm", () => {
 
     it("should update user's isStaking to true after staking", async () => {
       expect(await tokenFarm.isStaking(addr1.address)).to.equal(true);
+    });
+
+    it("should emit a Stake event after staking", async () => {
+      await stakingToken.mint(addr2.address, MINTING_AMOUNT);
+      await stakingToken
+        .connect(addr2)
+        .approve(tokenFarm.address, MINTING_AMOUNT);
+
+      await expect(tokenFarm.connect(addr2).stake(MINTING_AMOUNT))
+        .to.emit(tokenFarm, "Staked")
+        .withArgs(addr2.address, MINTING_AMOUNT);
     });
 
     it("should not accept staking if stakingAmount is more than balance", async () => {
@@ -134,6 +138,18 @@ describe("TokenFarm", () => {
 
     it("should update user's isStaking to false after un-staking", async () => {
       expect(await tokenFarm.isStaking(addr1.address)).to.equal(false);
+    });
+
+    it("should emit an Unstaked event after staking", async () => {
+      await stakingToken.mint(addr2.address, MINTING_AMOUNT);
+      await stakingToken
+        .connect(addr2)
+        .approve(tokenFarm.address, MINTING_AMOUNT);
+      await tokenFarm.connect(addr2).stake(MINTING_AMOUNT);
+
+      await expect(tokenFarm.connect(addr2).unStake(MINTING_AMOUNT))
+        .to.emit(tokenFarm, "Unstaked")
+        .withArgs(addr2.address, MINTING_AMOUNT);
     });
 
     it("should not accept staking if un-stakingAmount is more than staked balance", async () => {
@@ -197,6 +213,20 @@ describe("TokenFarm", () => {
       await expect(tokenFarm.connect(addr1).withdrawYield()).not.to.reverted;
     });
 
+    it("should revert if user has no staking balance", async () => {
+      await expect(tokenFarm.connect(addr2).withdrawYield()).to.be.revertedWith(
+        "You have nothing to withdraw"
+      );
+    });
+
+    it("should revert if user does not have yield to withdraw", async () => {
+      await tokenFarm.connect(addr1).unStake(MINTING_AMOUNT);
+
+      await expect(tokenFarm.connect(addr1).withdrawYield()).to.be.revertedWith(
+        "You have nothing to withdraw"
+      );
+    });
+
     describe("impact of yield withdrawn", () => {
       let expectedYield: number;
 
@@ -230,6 +260,19 @@ describe("TokenFarm", () => {
 
         expect(balance).to.equal(0);
       });
+    });
+
+    it("should emit a YieldWithdrawn event after withdrawing yield", async () => {
+      await stakingToken.mint(addr2.address, MINTING_AMOUNT);
+      await stakingToken
+        .connect(addr2)
+        .approve(tokenFarm.address, MINTING_AMOUNT);
+      await tokenFarm.connect(addr2).stake(MINTING_AMOUNT);
+
+      await expect(tokenFarm.connect(addr2).withdrawYield()).to.emit(
+        tokenFarm,
+        "YieldWithdrawn"
+      );
     });
   });
 });

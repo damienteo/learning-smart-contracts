@@ -22,7 +22,7 @@ contract TokenFarm {
     }
 
     event Staked(address indexed from, uint256 amount);
-    event Unstake(address indexed from, uint256 amount);
+    event Unstaked(address indexed from, uint256 amount);
     event YieldWithdrawn(address indexed to, uint256 amount);
 
     constructor(RewardToken _rewardToken, StakingToken _stakingToken) {
@@ -70,7 +70,7 @@ contract TokenFarm {
             isStaking[msg.sender] = false;
         }
 
-        emit Unstake(msg.sender, _amount);
+        emit Unstaked(msg.sender, balanceTransfer);
     }
 
     function withdrawYield() public {
