@@ -2,8 +2,10 @@
 
 pragma solidity ^0.8.4;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "./RewardToken.sol";
 import "./StakingToken.sol";
+
+import "hardhat/console.sol";
 
 contract TokenFarm {
     mapping(address => uint256) public stakingBalance;
@@ -11,7 +13,7 @@ contract TokenFarm {
     mapping(address => uint256) public startTime;
     mapping(address => uint256) public rewardTokenBalance;
 
-    IERC20 public rewardToken;
+    RewardToken public rewardToken;
     StakingToken public stakingToken;
 
     modifier moreThanZero(uint256 amount) {
@@ -23,7 +25,7 @@ contract TokenFarm {
     event Unstake(address indexed from, uint256 amount);
     event YieldWithdrawn(address indexed to, uint256 amount);
 
-    constructor(IERC20 _rewardToken, StakingToken _stakingToken) {
+    constructor(RewardToken _rewardToken, StakingToken _stakingToken) {
         rewardToken = _rewardToken;
         stakingToken = _stakingToken;
     }
@@ -51,7 +53,7 @@ contract TokenFarm {
         require(
             isStaking[msg.sender] == true &&
                 stakingBalance[msg.sender] >= _amount,
-            "You have insufficient tokens to unstake"
+            "You have insufficient tokens to un-stake"
         );
 
         uint256 yieldToTransfer = calculateTotalYield(msg.sender);
@@ -80,13 +82,13 @@ contract TokenFarm {
         );
 
         if (stakingBalance[msg.sender] > 0) {
-            uint256 prevBalance = stakingBalance[msg.sender];
+            uint256 prevBalance = rewardTokenBalance[msg.sender];
             stakingBalance[msg.sender] = 0;
             yieldToTransfer += prevBalance;
         }
 
         startTime[msg.sender] = block.timestamp;
-        stakingToken.mint(msg.sender, yieldToTransfer);
+        rewardToken.mint(msg.sender, yieldToTransfer);
 
         emit YieldWithdrawn(msg.sender, yieldToTransfer);
     }
