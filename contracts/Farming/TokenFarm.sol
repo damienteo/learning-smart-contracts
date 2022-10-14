@@ -114,5 +114,6 @@ contract TokenFarm {
 
         // TODO: Determine yield based on percentage of pool
         // TODO: Introduce other variables to determine yield rate
+        // TODO: Total yield does not include past yield from previous un-staking (should un-staking send past yield to the user?)
     }
 }
