@@ -27,8 +27,6 @@ describe("Basic721Token", function () {
     );
     [owner, addr1, addr2, addr3, addr4] = await ethers.getSigners();
     basic721Token = await Basic721TokenFactory.deploy();
-
-    return { basic721Token, owner, addr1, addr2, addr3, addr4 };
   });
 
   describe("Deployment", function () {
@@ -46,8 +44,8 @@ describe("Basic721Token", function () {
       expect(await basic721Token.balanceOf(owner.address)).to.equal(0);
     });
     it("should return correct balanceOf after minting tokens", async function () {
-      basic721Token.safeMint(owner.address, firstTokenId);
-      basic721Token.safeMint(owner.address, secondTokenId);
+      await basic721Token.safeMint(owner.address, firstTokenId);
+      await basic721Token.safeMint(owner.address, secondTokenId);
 
       expect(await basic721Token.balanceOf(owner.address)).to.equal(2);
     });
@@ -61,13 +59,13 @@ describe("Basic721Token", function () {
 
   describe("Owner", function () {
     it("returns the tokenId owner", async function () {
-      basic721Token.safeMint(addr1.address, uri);
+      await basic721Token.safeMint(addr1.address, uri);
 
       expect(await basic721Token.ownerOf(firstTokenId)).to.equal(addr1.address);
     });
 
     it("reverts an error when tokenId is invalid/untracked", async function () {
-      basic721Token.safeMint(addr1.address, uri);
+      await basic721Token.safeMint(addr1.address, uri);
 
       await expect(basic721Token.ownerOf(secondTokenId)).to.be.revertedWith(
         "ERC721: invalid token ID"
@@ -75,5 +73,102 @@ describe("Basic721Token", function () {
     });
   });
 
-  describe("transfers", async () => {});
+  describe("approvals", async () => {
+    beforeEach(async () => {
+      await basic721Token.safeMint(owner.address, firstTokenId);
+      await basic721Token.safeMint(owner.address, secondTokenId);
+    });
+
+    it("has no token prior approvals", async () => {
+      expect(await basic721Token.getApproved(firstTokenId)).to.equal(
+        ZERO_ADDRESS
+      );
+    });
+
+    it("sets approval accordingly", async () => {
+      await basic721Token.approve(addr1.address, firstTokenId);
+
+      expect(await basic721Token.getApproved(firstTokenId)).to.equal(
+        addr1.address
+      );
+    });
+
+    it("emits an Approval event", async () => {
+      await expect(basic721Token.approve(addr1.address, firstTokenId))
+        .to.emit(basic721Token, "Approval")
+        .withArgs(owner.address, addr1.address, firstTokenId);
+    });
+
+    it("reverts an error if transfer is un-approved", async () => {
+      await expect(
+        basic721Token
+          .connect(addr1)
+          .transferFrom(owner.address, addr1.address, firstTokenId)
+      ).to.be.revertedWith("ERC721: caller is not token owner nor approved");
+    });
+
+    it("allows transfers upon approval", async () => {
+      await basic721Token.approve(addr1.address, firstTokenId);
+      await expect(
+        basic721Token
+          .connect(addr1)
+          .transferFrom(owner.address, addr1.address, firstTokenId)
+      ).not.to.reverted;
+    });
+
+    it("clears the approval for the tokenId after transfer", async () => {
+      await basic721Token.approve(addr1.address, firstTokenId);
+      await basic721Token
+        .connect(addr1)
+        .transferFrom(owner.address, addr1.address, firstTokenId);
+
+      expect(await basic721Token.getApproved(firstTokenId)).to.equal(
+        ZERO_ADDRESS
+      );
+    });
+  });
+
+  describe("transfers", async () => {
+    beforeEach(async () => {
+      await basic721Token.safeMint(owner.address, firstTokenId);
+      await basic721Token.safeMint(owner.address, secondTokenId);
+
+      await basic721Token.approve(addr1.address, firstTokenId);
+      await basic721Token.setApprovalForAll(basic721Token.address, true, {
+        from: owner.address,
+      });
+    });
+
+    it("transfers ownership of the token", async () => {
+      await basic721Token.transferFrom(
+        owner.address,
+        addr1.address,
+        firstTokenId
+      );
+
+      expect(await basic721Token.ownerOf(firstTokenId)).to.equal(addr1.address);
+    });
+
+    it("emits Transfer event upon transfer", async () => {
+      await expect(
+        basic721Token.transferFrom(owner.address, addr1.address, firstTokenId)
+      )
+        .to.emit(basic721Token, "Transfer")
+        .withArgs(owner.address, addr1.address, firstTokenId);
+    });
+
+    it("adjusts the owner's balances", async () => {
+      expect(await basic721Token.balanceOf(owner.address)).to.equal(2);
+      expect(await basic721Token.balanceOf(addr1.address)).to.equal(0);
+
+      await basic721Token.transferFrom(
+        owner.address,
+        addr1.address,
+        firstTokenId
+      );
+
+      expect(await basic721Token.balanceOf(owner.address)).to.equal(1);
+      expect(await basic721Token.balanceOf(addr1.address)).to.equal(1);
+    });
+  });
 });
