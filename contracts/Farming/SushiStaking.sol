@@ -1,6 +1,6 @@
 //SPDX-License-Identifier: UNLICENSED
 
-pragma solidity ^0.8.11;
+pragma solidity ^0.8.4;
 
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -214,12 +214,13 @@ contract SushiStaking is ReentrancyGuard {
             if (transferExistingRewards) {
                 _claimReward(incentive, incentiveId, previousLiquidity);
             } else {
-                _saveReward(
-                    incentive,
-                    incentiveId,
-                    previousLiquidity,
-                    userStake.liquidity
-                );
+                // TODO: Fix error
+                // _saveReward(
+                //     incentive,
+                //     incentiveId,
+                //     previousLiquidity,
+                //     userStake.liquidity
+                // );
             }
 
             incentive.liquidityStaked += amount;
@@ -255,18 +256,19 @@ contract SushiStaking is ReentrancyGuard {
             if (transferExistingRewards || userStake.liquidity == 0) {
                 _claimReward(incentive, incentiveId, previousLiquidity);
             } else {
-                _saveReward(
-                    incentive,
-                    incentiveId,
-                    previousLiquidity,
-                    userStake.liquidity
-                );
+                // TODO: Fix error
+                // _saveReward(
+                //     incentive,
+                //     incentiveId,
+                //     previousLiquidity,
+                //     userStake.liquidity
+                // );
             }
 
             incentive.liquidityStaked -= amount;
         }
 
-        ERC20(token).safeTransfer(msg.sender, amount);
+        ERC20(token).transfer(msg.sender, amount);
 
         emit UnStaked(token, msg.sender, amount);
     }
