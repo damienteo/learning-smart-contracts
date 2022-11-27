@@ -10,6 +10,7 @@ const {
   PRIVATE_KEY,
   ETHERSCAN_API,
   POLYGONSCAN_API,
+  SNOWTRACE_API,
 } = process.env;
 
 const config: HardhatUserConfig = {
@@ -24,11 +25,16 @@ const config: HardhatUserConfig = {
       url: "https://matic-mumbai.chainstacklabs.com/",
       accounts: [PRIVATE_KEY || ""],
     },
+    fuji: {
+      url: "https://api.avax-test.network/ext/bc/C/rpc",
+      accounts: [PRIVATE_KEY || ""],
+    },
   },
   etherscan: {
     apiKey: {
       goerli: ETHERSCAN_API || "",
       polygonMumbai: POLYGONSCAN_API || "",
+      avalancheFujiTestnet: SNOWTRACE_API || "",
     },
   },
   paths: { tests: "tests" },
