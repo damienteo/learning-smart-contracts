@@ -14,7 +14,7 @@ const {
 } = process.env;
 
 const config: HardhatUserConfig = {
-  solidity: "0.8.9",
+  solidity: "0.8.17",
   // defaultNetwork: "goerli",
   networks: {
     goerli: {
