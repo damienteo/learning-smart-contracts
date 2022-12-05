@@ -46,7 +46,9 @@ describe("VulnToReentrancy", () => {
   it("allows normal withdrawal", async function () {
     await time.increase(3600 * 24 * 7); // Pass time by a week to bypass time limit
 
-    VulnToReentrancyContract.withdrawFunds(ethers.utils.parseEther("1.0"));
+    await VulnToReentrancyContract.withdrawFunds(
+      ethers.utils.parseEther("1.0")
+    );
 
     expect(
       await provider.getBalance(VulnToReentrancyContract.address)
