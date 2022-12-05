@@ -2,18 +2,22 @@
 
 pragma solidity ^0.8.17;
 
+import "hardhat/console.sol";
+
 contract VulnToOverflow {
     mapping(address => uint256) public balances;
-    mapping(address => uint256) public lockTime;
+    mapping(address => uint32) public lockTime; // Uses uint32 to prevent out-of-bounds error from test side)
 
     function deposit() public payable {
         balances[msg.sender] += msg.value;
-        lockTime[msg.sender] = block.timestamp + 1 weeks;
+        lockTime[msg.sender] = uint32(block.timestamp + 1 weeks);
     }
 
-    function increaseLockTime(uint256 _secondsToIncrease) public {
+    function increaseLockTime(address _address, uint32 _secondsToIncrease)
+        public
+    {
         unchecked {
-            lockTime[msg.sender] += _secondsToIncrease;
+            lockTime[_address] += _secondsToIncrease;
         }
     }
 

