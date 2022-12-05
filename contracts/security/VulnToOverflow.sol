@@ -17,12 +17,12 @@ contract VulnToOverflow {
         }
     }
 
-    function withdraw() public {
-        require(balances[msg.sender] > 0);
-        require(block.timestamp > lockTime[msg.sender]);
+    function withdraw(address _address) public {
+        require(balances[_address] > 0, "INSUFFICIENT_BALANCE");
+        require(block.timestamp > lockTime[_address], "TIMELOCK_ACTIVE");
 
-        uint256 balance = balances[msg.sender];
-        balances[msg.sender] = 0;
+        uint256 balance = balances[_address];
+        balances[_address] = 0;
         payable(msg.sender).transfer(balance);
     }
 }
