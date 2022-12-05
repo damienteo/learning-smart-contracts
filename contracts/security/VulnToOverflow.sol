@@ -6,7 +6,7 @@ import "hardhat/console.sol";
 
 contract VulnToOverflow {
     mapping(address => uint256) public balances;
-    mapping(address => uint32) public lockTime; // Uses uint32 to prevent out-of-bounds error from test side)
+    mapping(address => uint32) public lockTime; // HOTFIX: Uses uint32 to prevent out-of-bounds error from test side)
 
     function deposit() public payable {
         balances[msg.sender] += msg.value;

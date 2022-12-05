@@ -11,8 +11,6 @@ describe("VulnToOverflow", () => {
     addr2: SignerWithAddress,
     VulnToOverflowContract: VulnToOverflow;
 
-  const { provider } = ethers;
-
   beforeEach(async () => {
     const VulnToOverflowFactory = await ethers.getContractFactory(
       "VulnToOverflow"
