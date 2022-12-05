@@ -104,7 +104,7 @@ describe("Basic721Token", function () {
         basic721Token
           .connect(addr1)
           .transferFrom(owner.address, addr1.address, firstTokenId)
-      ).to.be.revertedWith("ERC721: caller is not token owner nor approved");
+      ).to.be.revertedWith("ERC721: caller is not token owner or approved");
     });
 
     it("allows transfers upon approval", async () => {
