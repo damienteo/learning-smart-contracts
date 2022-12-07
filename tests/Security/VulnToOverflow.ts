@@ -42,7 +42,7 @@ describe("VulnToOverflow", () => {
     ).to.be.revertedWith("TIMELOCK_ACTIVE");
   });
 
-  it("allows withdrawal for owner while still within timelock", async function () {
+  it("allows withdrawal for owner after timelock", async function () {
     await time.increase(60 * 60 * 24 * 7);
 
     await expect(VulnToOverflowContract.withdraw(owner.address)).not.to.be
