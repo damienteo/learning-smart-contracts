@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.17;
 
+import "hardhat/console.sol";
+
 contract VulnToUnexpectedEther {
     uint256 public payoutMileStone1 = 3 ether;
     uint256 public mileStone1Reward = 2 ether;
@@ -14,7 +16,7 @@ contract VulnToUnexpectedEther {
 
     function play() public payable {
         require(msg.value == 0.5 ether, "INCORRECT_SENT_VALUE");
-        uint256 currentBalance = address(this).balance + msg.value;
+        uint256 currentBalance = address(this).balance;
         require(currentBalance <= finalMileStone, "END_GAME_REACHED");
         if (currentBalance == payoutMileStone1) {
             redeemableEther[msg.sender] += mileStone1Reward;
