@@ -11,6 +11,8 @@ contract VulnToUnexpectedEther {
     uint256 public mileStone2Reward = 3 ether;
     uint256 public finalMileStone = 10 ether;
     uint256 public finalReward = 5 ether;
+    // Fix is by introducing a new variable, such as uint public depositedWei;
+    // Instead of comparing against address(this).balance for milestones, comparisons can be made against depositedWei
 
     mapping(address => uint256) redeemableEther;
 
