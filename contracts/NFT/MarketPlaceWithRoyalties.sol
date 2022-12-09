@@ -18,7 +18,7 @@ interface ERC721 {
 }
 
 // This is the contract for our NFT marketplace
-contract Marketplace {
+contract MarketPlaceWithRoyalties {
     // This is the address of the contract that manages the NFTs
     ERC721 nftContract;
 
@@ -37,18 +37,35 @@ contract Marketplace {
     struct NFT {
         uint256 tokenId;
         address seller;
+        address creator;
         uint256 price;
+        uint256 royalty;
     }
 
     // This function allows a seller to put an NFT up for sale
-    function putNFTForSale(uint256 _tokenId, uint256 _price) public {
+    function putNFTForSale(
+        uint256 _tokenId,
+        address _creator,
+        uint256 _price,
+        uint256 _royalty
+    ) public {
         require(
             nftContract.ownerOf(_tokenId) == msg.sender,
             "Only the owner of the NFT can put it up for sale"
         );
         require(_price > 0, "The price must be greater than 0");
+        require(
+            _royalty >= 0 && _royalty <= 100,
+            "The royalty must be between 0 and 100"
+        );
 
-        nftsForSale[_tokenId] = NFT(_tokenId, msg.sender, _price);
+        nftsForSale[_tokenId] = NFT(
+            _tokenId,
+            msg.sender,
+            _creator,
+            _price,
+            _royalty
+        );
     }
 
     // This function allows a buyer to purchase an NFT that is for sale
@@ -57,8 +74,12 @@ contract Marketplace {
         require(nft.tokenId == _tokenId, "NFT is not for sale");
         require(msg.value == nft.price, "Incorrect price");
 
-        nftContract.safeTransferFrom(nft.seller, msg.sender, _tokenId);
         delete nftsForSale[_tokenId];
+        nftContract.safeTransferFrom(nft.seller, msg.sender, _tokenId);
+
+        uint256 royaltyAmount = (nft.price * nft.royalty) / 100;
+        (bool sent, ) = nft.creator.call{value: royaltyAmount}("");
+        require(sent, "Failed to send Ether");
 
         emit NFTSold(_tokenId, nft.seller, msg.sender);
     }
