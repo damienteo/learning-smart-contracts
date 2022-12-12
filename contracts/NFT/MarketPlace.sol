@@ -29,7 +29,7 @@ contract Marketplace {
     event NFTSold(uint256 tokenId, address seller, address buyer);
 
     // This is the constructor function that is called when the contract is deployed
-    constructor(address _nftContract) public {
+    constructor(address _nftContract) {
         nftContract = ERC721(_nftContract);
     }
 
