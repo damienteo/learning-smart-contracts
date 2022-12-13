@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.17;
 
+// import "hardhat/console.sol";
+
 // Source: https://solidity-by-example.org/app/multi-sig-wallet/
 
 // Note on Custom Errors: https://blog.soliditylang.org/2021/04/21/custom-errors/
@@ -85,7 +87,7 @@ contract MultiSigWallet {
         // );
         if (
             _numConfirmationsRequired == 0 ||
-            _numConfirmationsRequired >= owners.length
+            _numConfirmationsRequired >= _owners.length
         ) revert InvalidNumberOfRequiredConfirmations();
 
         for (uint256 i = 0; i < _owners.length; i++) {
