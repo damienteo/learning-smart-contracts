@@ -1,8 +1,10 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import { time } from "@nomicfoundation/hardhat-network-helpers";
 
-import { MultiSigWallet } from "../../typechain-types/contracts/Utility";
+import {
+  MultiSigWallet,
+  TestContract,
+} from "../../typechain-types/contracts/Utility";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 describe("MultiSigWallet", () => {
@@ -17,7 +19,9 @@ describe("MultiSigWallet", () => {
     addr8: SignerWithAddress,
     addr9: SignerWithAddress,
     multiSigOwners: string[],
-    MultiSigWalletContract: MultiSigWallet;
+    MultiSigWalletContract: MultiSigWallet,
+    TestContract: TestContract,
+    TestContractAddress: string;
 
   beforeEach(async () => {
     [owner, addr1, addr2, addr3, addr4, addr5, addr6, addr7, addr8, addr9] =
@@ -37,6 +41,11 @@ describe("MultiSigWallet", () => {
       multiSigOwners,
       multiSigOwners.length - 2
     );
+
+    const TestContractFactory = await ethers.getContractFactory("TestContract");
+    TestContract = await TestContractFactory.deploy();
+
+    TestContractAddress = TestContract.address;
   });
 
   describe("Deployment", async () => {
@@ -78,6 +87,67 @@ describe("MultiSigWallet", () => {
         nextMultiSigWalletFactory,
         "InvalidNumberOfRequiredConfirmations"
       );
+    });
+  });
+
+  describe("Submit Transaction", async () => {
+    it("allows one owner to submit a transaction", async () => {
+      const nextValue = 0;
+      const data = await TestContract.getData(2);
+
+      await expect(
+        MultiSigWalletContract.connect(addr1).submitTransaction(
+          TestContractAddress,
+          nextValue,
+          data
+        )
+      ).not.to.be.reverted;
+    });
+
+    it("stores input data in the contract", async () => {
+      const data = await TestContract.getData(2);
+      const nextValue = 0;
+
+      await MultiSigWalletContract.connect(addr1).submitTransaction(
+        TestContractAddress,
+        nextValue,
+        data
+      );
+
+      const submittedTx = await MultiSigWalletContract.getTransaction(0);
+      expect(submittedTx[0]).to.equal(TestContractAddress); // tx.to
+      expect(submittedTx[1]).to.equal(nextValue); // tx.value
+      expect(submittedTx[2]).to.equal(data); // tx.data
+    });
+
+    it("shows the correct status data", async () => {
+      const data = await TestContract.getData(2);
+
+      const nextValue = 0;
+
+      await MultiSigWalletContract.connect(addr1).submitTransaction(
+        TestContractAddress,
+        nextValue,
+        data
+      );
+
+      const submittedTx = await MultiSigWalletContract.getTransaction(0);
+      expect(submittedTx[3]).to.equal(false); // tx.executed
+      expect(submittedTx[4]).to.equal(0); // tx.numConfirmations
+    });
+
+    it("prevents non-owners from submitting transactions", async () => {
+      const data = await TestContract.getData(2);
+
+      const nextValue = 0;
+
+      await expect(
+        MultiSigWalletContract.connect(addr5).submitTransaction(
+          TestContractAddress,
+          nextValue,
+          data
+        )
+      ).to.be.revertedWithCustomError(MultiSigWalletContract, "NotOwner");
     });
   });
 });
