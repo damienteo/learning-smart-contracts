@@ -88,6 +88,19 @@ describe("MultiSigWallet", () => {
         "InvalidNumberOfRequiredConfirmations"
       );
     });
+
+    it("returns the owners of the contract", async () => {
+      const owners = await MultiSigWalletContract.getOwners();
+
+      expect(JSON.stringify(owners)).to.equal(JSON.stringify(multiSigOwners));
+    });
+
+    it("returns the transactionCount of the contract", async () => {
+      const transactionCount =
+        await MultiSigWalletContract.getTransactionCount();
+
+      expect(transactionCount).to.equal(0);
+    });
   });
 
   describe("Submit Transaction", async () => {
@@ -314,6 +327,17 @@ describe("MultiSigWallet", () => {
 
       await expect(
         MultiSigWalletContract.connect(owner).executeTransaction(txIndex)
+      ).to.be.revertedWithCustomError(
+        MultiSigWalletContract,
+        "TxAlreadyExecuted"
+      );
+    });
+
+    it("prevents confirmation of a transaction which has already executed", async () => {
+      await MultiSigWalletContract.connect(owner).executeTransaction(txIndex);
+
+      await expect(
+        MultiSigWalletContract.connect(addr4).confirmTransaction(txIndex)
       ).to.be.revertedWithCustomError(
         MultiSigWalletContract,
         "TxAlreadyExecuted"
