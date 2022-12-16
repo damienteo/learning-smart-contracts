@@ -71,7 +71,7 @@ contract MultiSigWallet {
     }
 
     modifier notConfirmed(uint256 _txIndex) {
-        require(!isConfirmed[_txIndex][msg.sender], "TX_ALREADY_CONFIRMED");
+        // require(!isConfirmed[_txIndex][msg.sender], "TX_ALREADY_CONFIRMED");
         if (isConfirmed[_txIndex][msg.sender]) revert TxAlreadyConfirmed();
         _;
     }
