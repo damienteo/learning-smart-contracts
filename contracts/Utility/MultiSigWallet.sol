@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.17;
 
-// import "hardhat/console.sol";
+import "hardhat/console.sol";
 
 // Source: https://solidity-by-example.org/app/multi-sig-wallet/
 
@@ -102,6 +102,8 @@ contract MultiSigWallet {
             isOwner[owner] = true;
             owners.push(owner);
         }
+
+        numConfirmationsRequired = _numConfirmationsRequired;
     }
 
     receive() external payable {
