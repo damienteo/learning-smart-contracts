@@ -23,6 +23,8 @@ describe("MultiSigWallet", () => {
     TestContract: TestContract,
     TestContractAddress: string;
 
+  const txIndex = 0;
+
   beforeEach(async () => {
     [owner, addr1, addr2, addr3, addr4, addr5, addr6, addr7, addr8, addr9] =
       await ethers.getSigners();
@@ -149,6 +151,14 @@ describe("MultiSigWallet", () => {
       expect(submittedTx[4]).to.equal(0); // tx.numConfirmations
     });
 
+    it("has confirmation status as initially false after transaction is newly submitted", async () => {
+      const confirmation = await MultiSigWalletContract.isConfirmed(
+        txIndex,
+        addr1.address
+      );
+      expect(confirmation).to.equal(false);
+    });
+
     it("prevents non-owners from submitting transactions", async () => {
       const data = await TestContract.getData(2);
 
@@ -166,7 +176,6 @@ describe("MultiSigWallet", () => {
     it("emits an event upon successful submission of transaction", async () => {
       const data = await TestContract.getData(2);
       const nextValue = 0;
-      const txIndex = 0;
 
       await expect(
         MultiSigWalletContract.connect(addr1).submitTransaction(
@@ -198,7 +207,6 @@ describe("MultiSigWallet", () => {
 
   describe("Confirm Transaction", async () => {
     const nextValue = 0;
-    const txIndex = 0;
     const calledValue = 2;
 
     beforeEach(async () => {
@@ -215,6 +223,28 @@ describe("MultiSigWallet", () => {
       await expect(
         MultiSigWalletContract.connect(addr2).confirmTransaction(txIndex)
       ).not.to.be.reverted;
+    });
+
+    it("changes confirmation status accordingly after user confirms a transaction", async () => {
+      await MultiSigWalletContract.connect(addr2).confirmTransaction(txIndex);
+
+      const confirmation = await MultiSigWalletContract.isConfirmed(
+        txIndex,
+        addr2.address
+      );
+      expect(confirmation).to.equal(true);
+    });
+
+    it("increases transaction's number of confirmations accordingly after user revokes a transaction", async () => {
+      const prevTx = await MultiSigWalletContract.getTransaction(txIndex);
+      const prevNumOfConfirmations = prevTx.numConfirmations;
+
+      await MultiSigWalletContract.connect(addr2).confirmTransaction(txIndex);
+
+      const tx = await MultiSigWalletContract.getTransaction(txIndex);
+      const numOfConfirmations = tx.numConfirmations;
+
+      expect(numOfConfirmations).to.equal(prevNumOfConfirmations.add(1));
     });
 
     it("stores input data in the contract", async () => {
@@ -242,7 +272,7 @@ describe("MultiSigWallet", () => {
       );
     });
 
-    it("prevents non-owners from submitting transactions", async () => {
+    it("prevents non-owners from confirming transactions", async () => {
       await expect(
         MultiSigWalletContract.connect(addr6).confirmTransaction(txIndex)
       ).to.be.revertedWithCustomError(MultiSigWalletContract, "NotOwner");
@@ -254,7 +284,7 @@ describe("MultiSigWallet", () => {
       ).to.be.revertedWithCustomError(MultiSigWalletContract, "TxDoesNotExist");
     });
 
-    it("emits an event upon successful submission of transaction", async () => {
+    it("emits an event upon successful confirmation of transaction", async () => {
       await expect(
         MultiSigWalletContract.connect(addr2).confirmTransaction(txIndex)
       )
@@ -263,9 +293,79 @@ describe("MultiSigWallet", () => {
     });
   });
 
+  describe("Revoke Transaction", async () => {
+    const nextValue = 0;
+    const calledValue = 2;
+
+    beforeEach(async () => {
+      const data = await TestContract.getData(calledValue);
+
+      await MultiSigWalletContract.connect(addr1).submitTransaction(
+        TestContractAddress,
+        nextValue,
+        data
+      );
+
+      await MultiSigWalletContract.connect(addr2).confirmTransaction(txIndex);
+    });
+
+    it("allows one owner to revoke a transaction", async () => {
+      await expect(
+        MultiSigWalletContract.connect(addr2).revokeConfirmation(txIndex)
+      ).not.to.be.reverted;
+    });
+
+    it("changes confirmation status accordingly after user revokes a transaction", async () => {
+      await MultiSigWalletContract.connect(addr2).revokeConfirmation(txIndex);
+
+      const confirmation = await MultiSigWalletContract.isConfirmed(
+        txIndex,
+        addr2.address
+      );
+      expect(confirmation).to.equal(false);
+    });
+
+    it("decreases transaction's number of confirmations accordingly after user revokes a transaction", async () => {
+      const prevTx = await MultiSigWalletContract.getTransaction(txIndex);
+      const prevNumOfConfirmations = prevTx.numConfirmations;
+
+      await MultiSigWalletContract.connect(addr2).revokeConfirmation(txIndex);
+
+      const tx = await MultiSigWalletContract.getTransaction(txIndex);
+      const numOfConfirmations = tx.numConfirmations;
+
+      expect(numOfConfirmations).to.equal(prevNumOfConfirmations.sub(1));
+    });
+
+    it("prevents non-owners from revoking transactions", async () => {
+      await expect(
+        MultiSigWalletContract.connect(addr6).revokeConfirmation(txIndex)
+      ).to.be.revertedWithCustomError(MultiSigWalletContract, "NotOwner");
+    });
+
+    it("prevents revoking of confirmations from non-exisitng transactions", async () => {
+      await expect(
+        MultiSigWalletContract.connect(addr2).revokeConfirmation(txIndex + 1)
+      ).to.be.revertedWithCustomError(MultiSigWalletContract, "TxDoesNotExist");
+    });
+
+    it("prevents revoking of confirmations if confirmations had not previously been made", async () => {
+      await expect(
+        MultiSigWalletContract.connect(addr1).revokeConfirmation(txIndex)
+      ).to.be.revertedWithCustomError(MultiSigWalletContract, "TxNotConfirmed");
+    });
+
+    it("emits an event upon successful confirmation of transaction", async () => {
+      await expect(
+        MultiSigWalletContract.connect(addr2).revokeConfirmation(txIndex)
+      )
+        .to.emit(MultiSigWalletContract, "RevokeConfirmation")
+        .withArgs(addr2.address, txIndex);
+    });
+  });
+
   describe("Execute Transaction", async () => {
     const nextValue = 0;
-    const txIndex = 0;
     const calledValue = 2;
 
     beforeEach(async () => {
@@ -338,6 +438,17 @@ describe("MultiSigWallet", () => {
 
       await expect(
         MultiSigWalletContract.connect(addr4).confirmTransaction(txIndex)
+      ).to.be.revertedWithCustomError(
+        MultiSigWalletContract,
+        "TxAlreadyExecuted"
+      );
+    });
+
+    it("prevents revoking of the confirmation of a transaction which has already executed", async () => {
+      await MultiSigWalletContract.connect(owner).executeTransaction(txIndex);
+
+      await expect(
+        MultiSigWalletContract.connect(addr1).revokeConfirmation(txIndex)
       ).to.be.revertedWithCustomError(
         MultiSigWalletContract,
         "TxAlreadyExecuted"
