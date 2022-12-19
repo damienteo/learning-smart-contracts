@@ -7,6 +7,10 @@ import {
 } from "../../typechain-types/contracts/Utility";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
+import { ZERO_ADDRESS } from "../../constants/constants";
+
+const testContractJson = require("../../artifacts/contracts/Utility/TestContract.sol/TestContract");
+
 describe("MultiSigWallet", () => {
   let owner: SignerWithAddress,
     addr1: SignerWithAddress,
@@ -407,7 +411,7 @@ describe("MultiSigWallet", () => {
         MultiSigWalletContract.connect(owner).executeTransaction(txIndex)
       )
         .to.emit(MultiSigWalletContract, "ExecuteTransaction")
-        .withArgs(owner.address, txIndex);
+        .withArgs(owner.address, txIndex, "0x");
     });
 
     it("prevents non-owner from executing a transaction", async () => {
@@ -506,6 +510,53 @@ describe("MultiSigWallet", () => {
 
       await expect(
         MultiSigWalletContract.connect(owner).executeTransaction(nextTxIndex)
+      ).not.to.be.reverted;
+    });
+  });
+
+  describe("Contract Deployment with call function", async () => {
+    // let nextTestContractAddress: string;
+    // call function will not return the address of the new contract
+
+    beforeEach(async () => {
+      const transaction = await MultiSigWalletContract.connect(
+        addr1
+      ).submitTransaction(ZERO_ADDRESS, 0, testContractJson.bytecode);
+
+      await transaction.wait();
+
+      await expect(
+        MultiSigWalletContract.connect(addr1).confirmTransaction(txIndex)
+      );
+
+      await expect(
+        MultiSigWalletContract.connect(addr2).confirmTransaction(txIndex)
+      );
+
+      await expect(
+        MultiSigWalletContract.connect(addr3).confirmTransaction(txIndex)
+      );
+    });
+
+    it("does not revert an error when submitting a transaction with bytecode", async () => {
+      await expect(
+        MultiSigWalletContract.connect(addr1).submitTransaction(
+          ZERO_ADDRESS,
+          0,
+          testContractJson.bytecode
+        )
+      ).not.to.be.reverted;
+    });
+
+    it("does not revert an error when executing a transaction with bytecode", async () => {
+      await expect(
+        MultiSigWalletContract.connect(addr1).executeTransaction(txIndex)
+      ).not.to.be.reverted;
+    });
+
+    it("returns the address of the newly deployed contract", async () => {
+      await expect(
+        MultiSigWalletContract.connect(addr1).executeTransaction(txIndex)
       ).not.to.be.reverted;
     });
   });
