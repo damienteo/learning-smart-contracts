@@ -411,7 +411,7 @@ describe("MultiSigWallet", () => {
         MultiSigWalletContract.connect(owner).executeTransaction(txIndex)
       )
         .to.emit(MultiSigWalletContract, "ExecuteTransaction")
-        .withArgs(owner.address, txIndex, "0x");
+        .withArgs(owner.address, txIndex);
     });
 
     it("prevents non-owner from executing a transaction", async () => {

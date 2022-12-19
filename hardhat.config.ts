@@ -1,6 +1,7 @@
 import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 import "@openzeppelin/hardhat-upgrades";
+import "hardhat-gas-reporter";
 
 require("dotenv").config();
 
@@ -38,6 +39,9 @@ const config: HardhatUserConfig = {
     },
   },
   paths: { tests: "tests" },
+  gasReporter: {
+    enabled: true,
+  },
 };
 
 export default config;
