@@ -149,6 +149,7 @@ contract MultiSigWallet {
         onlyOwner
         txExists(_txIndex)
         notExecuted(_txIndex)
+        returns (bytes memory)
     {
         Transaction storage transaction = transactions[_txIndex];
 
@@ -161,13 +162,15 @@ contract MultiSigWallet {
 
         transaction.executed = true;
 
-        (bool success, ) = transaction.to.call{value: transaction.value}(
-            transaction.data
-        );
+        (bool success, bytes memory returnData) = transaction.to.call{
+            value: transaction.value
+        }(transaction.data);
         // require(success, "TX_FAILURE");
         if (!success) revert TxFailure();
 
         emit ExecuteTransaction(msg.sender, _txIndex);
+
+        return returnData;
     }
 
     function revokeConfirmation(uint256 _txIndex)
@@ -232,3 +235,70 @@ contract MultiSigWallet {
 // Number of confirmations for deployment, upgrade, versus transfer of value)
 
 // Multi Sig for deploying and upgrading contracts
+
+// Three ways of generating a contract that will be owned by the multisig contract:
+// 1) Another wallet creates the contract and transfers ownership to the multisig contract (cheapest and least complicated)
+// 2) Using executeTransaction, wherein `_to` is a zero address, so a new contract will be deployed, while `data` is the bytecode of the new contract to be deployed
+// 3) Alternative way fo executeTransaction, which is:
+// `
+//  assembly {
+//             newContract := create(value, add(deploymentData, 0x20), mload(deploymentData))
+//         }
+// `
+
+// The create function takes three arguments: a value, a data offset, and a data size.
+// Itn returns the address of the newly created contract as its output.
+// value is the amount of ether that will be passed to the contract when it is created.
+// The add(_data, 0x20) expression calculates the memory address of the contract bytecode
+// by adding the _data argument (which is a bytes memory variable containing the contract bytecode) to the hexadecimal number 0x20.
+// The reason for adding 0x20 to the _data argument is that
+// Solidity uses a so-called "free memory pointer" to keep track of where the next memory allocation should occur.
+// When you allocate memory in Solidity using the malloc function or the new keyword,
+// the free memory pointer is incremented by the number of bytes you allocate.
+
+// For example, if you allocate 32 bytes of memory using malloc(32),
+// the free memory pointer will be incremented by 32
+// and will point to the memory address immediately after the allocated memory.
+// If you then allocate another 32 bytes of memory using malloc(32),
+// the free memory pointer will be incremented by another 32 and
+// will point to the memory address immediately after the second allocated memory block.
+
+// The create function uses the free memory pointer to determine where to store the contract bytecode.
+// By adding 0x20 to the _data argument,
+// you are effectively "reserving" 32 bytes of memory for the contract bytecode and
+// ensuring that the free memory pointer points to the memory address immediately after the contract bytecode.
+
+// The mload(_data) expression is used to calculate the data size, or the length of the contract bytecode.
+// It does this by using the mload function to load the value at the memory address specified by the _data argument
+// (which is a bytes memory variable containing the contract bytecode).
+
+// The mload function loads a word (i.e. 32 bytes) from memory and returns it as a uint256 value.
+// In this case, the mload function is used to load the first 32 bytes of the contract bytecode,
+// which contains the length of the bytecode stored as a uint256 value.
+
+// By using the mload function to calculate the data size,
+// you can ensure that the entire contract bytecode is included in the create function call.
+
+// The `call` function is a low-level function that allows you to execute a contract's fallback function with a given value and data.
+// If the contract address specified in the _to argument is set to address(0),
+// the call function will create a new contract at the address of the call
+// and execute its fallback function with the given _value and _data arguments.
+
+// The main difference is that:
+// the create function allows you to specify a value to send to the contract when it is created,
+// while the call function allows you to execute the contract's fallback function with a given value and data.
+
+// Other factors:
+// Compatibility: The call function is available in all versions of Solidity,
+// while the create function is only available in version 0.4.0 and higher.
+// Gas cost: The gas cost of the create function is generally lower
+// than the gas cost of the call function,
+// since it does not execute the contract's fallback function.
+// However, the create function has a higher upfront cost,
+// as it requires you to specify a value to send to the contract when it is created.
+// Use case: If you just want to deploy a new contract without executing any of its functions,
+// the create function may be a more efficient choice.
+// If you want to execute the contract's fallback function or any other function as part of the deployment process,
+// the call function may be a better choice.
+
+// https://medium.com/coinmonks/the-difference-between-bytecode-and-deployed-bytecode-64594db723df
