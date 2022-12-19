@@ -1,0 +1,627 @@
+import { expect } from "chai";
+import { ethers } from "hardhat";
+
+import {
+  MultiSigWalletWithStringError,
+  TestContract,
+} from "../../typechain-types/contracts/Utility";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+
+import { ZERO_ADDRESS } from "../../constants/constants";
+
+const testContractJson = require("../../artifacts/contracts/Utility/TestContract.sol/TestContract");
+
+describe("MultiSigWalletWithStringError", () => {
+  let owner: SignerWithAddress,
+    addr1: SignerWithAddress,
+    addr2: SignerWithAddress,
+    addr3: SignerWithAddress,
+    addr4: SignerWithAddress,
+    addr5: SignerWithAddress,
+    addr6: SignerWithAddress,
+    addr7: SignerWithAddress,
+    addr8: SignerWithAddress,
+    addr9: SignerWithAddress,
+    multiSigOwners: string[],
+    MultiSigWalletWithStringErrorContract: MultiSigWalletWithStringError,
+    TestContract: TestContract,
+    TestContractAddress: string;
+
+  const txIndex = 0;
+
+  beforeEach(async () => {
+    [owner, addr1, addr2, addr3, addr4, addr5, addr6, addr7, addr8, addr9] =
+      await ethers.getSigners();
+    multiSigOwners = [
+      owner.address,
+      addr1.address,
+      addr2.address,
+      addr3.address,
+      addr4.address,
+    ];
+
+    const MultiSigWalletWithStringErrorFactory =
+      await ethers.getContractFactory("MultiSigWalletWithStringError");
+    MultiSigWalletWithStringErrorContract =
+      await MultiSigWalletWithStringErrorFactory.deploy(
+        multiSigOwners,
+        multiSigOwners.length - 2
+      );
+
+    const TestContractFactory = await ethers.getContractFactory("TestContract");
+    TestContract = await TestContractFactory.deploy();
+
+    TestContractAddress = TestContract.address;
+  });
+
+  describe("Deployment", async () => {
+    it("reverts if zero owner addressed are passed", async () => {
+      const nextMultiSigWalletWithStringErrorFactory =
+        await ethers.getContractFactory("MultiSigWalletWithStringError");
+
+      await expect(
+        nextMultiSigWalletWithStringErrorFactory.deploy(
+          [],
+          multiSigOwners.length
+        )
+      ).to.be.revertedWith("OWNER_REQUIRED");
+    });
+
+    it("reverts if _numConfirmationsRequired is less than number of owners", async () => {
+      const nextNumOfConfirmations = multiSigOwners.length + 1;
+      const nextMultiSigWalletWithStringErrorFactory =
+        await ethers.getContractFactory("MultiSigWalletWithStringError");
+
+      await expect(
+        nextMultiSigWalletWithStringErrorFactory.deploy(
+          multiSigOwners,
+          nextNumOfConfirmations
+        )
+      ).to.be.revertedWith("INVALID_NUMBER_OF_REQUIRED_CONFIRMATIONS");
+    });
+
+    it("reverts if _numConfirmationsRequired is zero", async () => {
+      const nextMultiSigWalletWithStringErrorFactory =
+        await ethers.getContractFactory("MultiSigWalletWithStringError");
+
+      await expect(
+        nextMultiSigWalletWithStringErrorFactory.deploy(multiSigOwners, 0)
+      ).to.be.revertedWith("INVALID_NUMBER_OF_REQUIRED_CONFIRMATIONS");
+    });
+
+    it("returns the owners of the contract", async () => {
+      const owners = await MultiSigWalletWithStringErrorContract.getOwners();
+
+      expect(JSON.stringify(owners)).to.equal(JSON.stringify(multiSigOwners));
+    });
+
+    it("returns the transactionCount of the contract", async () => {
+      const transactionCount =
+        await MultiSigWalletWithStringErrorContract.getTransactionCount();
+
+      expect(transactionCount).to.equal(0);
+    });
+  });
+
+  describe("Submit Transaction", async () => {
+    it("allows one owner to submit a transaction", async () => {
+      const nextValue = 0;
+      const data = await TestContract.getData(2);
+
+      await expect(
+        MultiSigWalletWithStringErrorContract.connect(addr1).submitTransaction(
+          TestContractAddress,
+          nextValue,
+          data
+        )
+      ).not.to.be.reverted;
+    });
+
+    it("stores input data in the contract", async () => {
+      const data = await TestContract.getData(2);
+      const nextValue = 0;
+
+      await MultiSigWalletWithStringErrorContract.connect(
+        addr1
+      ).submitTransaction(TestContractAddress, nextValue, data);
+
+      const submittedTx =
+        await MultiSigWalletWithStringErrorContract.getTransaction(0);
+      expect(submittedTx[0]).to.equal(TestContractAddress); // tx.to
+      expect(submittedTx[1]).to.equal(nextValue); // tx.value
+      expect(submittedTx[2]).to.equal(data); // tx.data
+    });
+
+    it("shows the correct status data", async () => {
+      const data = await TestContract.getData(2);
+
+      const nextValue = 0;
+
+      await MultiSigWalletWithStringErrorContract.connect(
+        addr1
+      ).submitTransaction(TestContractAddress, nextValue, data);
+
+      const submittedTx =
+        await MultiSigWalletWithStringErrorContract.getTransaction(0);
+      expect(submittedTx[3]).to.equal(false); // tx.executed
+      expect(submittedTx[4]).to.equal(0); // tx.numConfirmations
+    });
+
+    it("has confirmation status as initially false after transaction is newly submitted", async () => {
+      const confirmation =
+        await MultiSigWalletWithStringErrorContract.isConfirmed(
+          txIndex,
+          addr1.address
+        );
+      expect(confirmation).to.equal(false);
+    });
+
+    it("prevents non-owners from submitting transactions", async () => {
+      const data = await TestContract.getData(2);
+
+      const nextValue = 0;
+
+      await expect(
+        MultiSigWalletWithStringErrorContract.connect(addr5).submitTransaction(
+          TestContractAddress,
+          nextValue,
+          data
+        )
+      ).to.be.revertedWith("NOT_OWNER");
+    });
+
+    it("emits an event upon successful submission of transaction", async () => {
+      const data = await TestContract.getData(2);
+      const nextValue = 0;
+
+      await expect(
+        MultiSigWalletWithStringErrorContract.connect(addr1).submitTransaction(
+          TestContractAddress,
+          nextValue,
+          data
+        )
+      )
+        .to.emit(MultiSigWalletWithStringErrorContract, "SubmitTransaction")
+        .withArgs(addr1.address, txIndex, TestContractAddress, nextValue, data);
+
+      await expect(
+        MultiSigWalletWithStringErrorContract.connect(addr1).submitTransaction(
+          TestContractAddress,
+          nextValue,
+          data
+        )
+      )
+        .to.emit(MultiSigWalletWithStringErrorContract, "SubmitTransaction")
+        .withArgs(
+          addr1.address,
+          txIndex + 1,
+          TestContractAddress,
+          nextValue,
+          data
+        );
+    });
+  });
+
+  describe("Confirm Transaction", async () => {
+    const nextValue = 0;
+    const calledValue = 2;
+
+    beforeEach(async () => {
+      const data = await TestContract.getData(calledValue);
+
+      await MultiSigWalletWithStringErrorContract.connect(
+        addr1
+      ).submitTransaction(TestContractAddress, nextValue, data);
+    });
+
+    it("allows one owner to confirm a transaction", async () => {
+      await expect(
+        MultiSigWalletWithStringErrorContract.connect(addr2).confirmTransaction(
+          txIndex
+        )
+      ).not.to.be.reverted;
+    });
+
+    it("changes confirmation status accordingly after user confirms a transaction", async () => {
+      await MultiSigWalletWithStringErrorContract.connect(
+        addr2
+      ).confirmTransaction(txIndex);
+
+      const confirmation =
+        await MultiSigWalletWithStringErrorContract.isConfirmed(
+          txIndex,
+          addr2.address
+        );
+      expect(confirmation).to.equal(true);
+    });
+
+    it("increases transaction's number of confirmations accordingly after user revokes a transaction", async () => {
+      const prevTx = await MultiSigWalletWithStringErrorContract.getTransaction(
+        txIndex
+      );
+      const prevNumOfConfirmations = prevTx.numConfirmations;
+
+      await MultiSigWalletWithStringErrorContract.connect(
+        addr2
+      ).confirmTransaction(txIndex);
+
+      const tx = await MultiSigWalletWithStringErrorContract.getTransaction(
+        txIndex
+      );
+      const numOfConfirmations = tx.numConfirmations;
+
+      expect(numOfConfirmations).to.equal(prevNumOfConfirmations.add(1));
+    });
+
+    it("stores input data in the contract", async () => {
+      await MultiSigWalletWithStringErrorContract.connect(
+        addr2
+      ).confirmTransaction(txIndex);
+
+      const submittedTx =
+        await MultiSigWalletWithStringErrorContract.getTransaction(txIndex);
+      expect(submittedTx[4]).to.equal(1); // tx.numConfirmations
+
+      await MultiSigWalletWithStringErrorContract.connect(
+        addr3
+      ).confirmTransaction(txIndex);
+
+      const submittedTxNextInfo =
+        await MultiSigWalletWithStringErrorContract.getTransaction(txIndex);
+      expect(submittedTxNextInfo[4]).to.equal(2); // tx.numConfirmations
+    });
+
+    it("reverts if the user had already confirmed the tx before", async () => {
+      await MultiSigWalletWithStringErrorContract.connect(
+        addr2
+      ).confirmTransaction(txIndex);
+
+      await expect(
+        MultiSigWalletWithStringErrorContract.connect(addr2).confirmTransaction(
+          txIndex
+        )
+      ).to.be.revertedWith("TX_ALREADY_CONFIRMED");
+    });
+
+    it("prevents non-owners from confirming transactions", async () => {
+      await expect(
+        MultiSigWalletWithStringErrorContract.connect(addr6).confirmTransaction(
+          txIndex
+        )
+      ).to.be.revertedWith("NOT_OWNER");
+    });
+
+    it("prevents confirmation of non-existing transactions", async () => {
+      await expect(
+        MultiSigWalletWithStringErrorContract.connect(addr4).confirmTransaction(
+          txIndex + 1
+        )
+      ).to.be.revertedWith("TX_DOES_NOT_EXIST");
+    });
+
+    it("emits an event upon successful confirmation of transaction", async () => {
+      await expect(
+        MultiSigWalletWithStringErrorContract.connect(addr2).confirmTransaction(
+          txIndex
+        )
+      )
+        .to.emit(MultiSigWalletWithStringErrorContract, "ConfirmTransaction")
+        .withArgs(addr2.address, txIndex);
+    });
+  });
+
+  describe("Revoke Transaction", async () => {
+    const nextValue = 0;
+    const calledValue = 2;
+
+    beforeEach(async () => {
+      const data = await TestContract.getData(calledValue);
+
+      await MultiSigWalletWithStringErrorContract.connect(
+        addr1
+      ).submitTransaction(TestContractAddress, nextValue, data);
+
+      await MultiSigWalletWithStringErrorContract.connect(
+        addr2
+      ).confirmTransaction(txIndex);
+    });
+
+    it("allows one owner to revoke a transaction", async () => {
+      await expect(
+        MultiSigWalletWithStringErrorContract.connect(addr2).revokeConfirmation(
+          txIndex
+        )
+      ).not.to.be.reverted;
+    });
+
+    it("changes confirmation status accordingly after user revokes a transaction", async () => {
+      await MultiSigWalletWithStringErrorContract.connect(
+        addr2
+      ).revokeConfirmation(txIndex);
+
+      const confirmation =
+        await MultiSigWalletWithStringErrorContract.isConfirmed(
+          txIndex,
+          addr2.address
+        );
+      expect(confirmation).to.equal(false);
+    });
+
+    it("decreases transaction's number of confirmations accordingly after user revokes a transaction", async () => {
+      const prevTx = await MultiSigWalletWithStringErrorContract.getTransaction(
+        txIndex
+      );
+      const prevNumOfConfirmations = prevTx.numConfirmations;
+
+      await MultiSigWalletWithStringErrorContract.connect(
+        addr2
+      ).revokeConfirmation(txIndex);
+
+      const tx = await MultiSigWalletWithStringErrorContract.getTransaction(
+        txIndex
+      );
+      const numOfConfirmations = tx.numConfirmations;
+
+      expect(numOfConfirmations).to.equal(prevNumOfConfirmations.sub(1));
+    });
+
+    it("prevents non-owners from revoking transactions", async () => {
+      await expect(
+        MultiSigWalletWithStringErrorContract.connect(addr6).revokeConfirmation(
+          txIndex
+        )
+      ).to.be.revertedWith("NOT_OWNER");
+    });
+
+    it("prevents revoking of confirmations from non-exisitng transactions", async () => {
+      await expect(
+        MultiSigWalletWithStringErrorContract.connect(addr2).revokeConfirmation(
+          txIndex + 1
+        )
+      ).to.be.revertedWith("TX_DOES_NOT_EXIST");
+    });
+
+    it("prevents revoking of confirmations if confirmations had not previously been made", async () => {
+      await expect(
+        MultiSigWalletWithStringErrorContract.connect(addr1).revokeConfirmation(
+          txIndex
+        )
+      ).to.be.revertedWith("TX_NOT_CONFIRMED");
+    });
+
+    it("emits an event upon successful confirmation of transaction", async () => {
+      await expect(
+        MultiSigWalletWithStringErrorContract.connect(addr2).revokeConfirmation(
+          txIndex
+        )
+      )
+        .to.emit(MultiSigWalletWithStringErrorContract, "RevokeConfirmation")
+        .withArgs(addr2.address, txIndex);
+    });
+  });
+
+  describe("Execute Transaction", async () => {
+    const nextValue = 0;
+    const calledValue = 2;
+
+    beforeEach(async () => {
+      const data = await TestContract.getData(calledValue);
+
+      await MultiSigWalletWithStringErrorContract.connect(
+        addr1
+      ).submitTransaction(TestContractAddress, nextValue, data);
+
+      await expect(
+        MultiSigWalletWithStringErrorContract.connect(addr1).confirmTransaction(
+          txIndex
+        )
+      );
+
+      await expect(
+        MultiSigWalletWithStringErrorContract.connect(addr2).confirmTransaction(
+          txIndex
+        )
+      );
+
+      await expect(
+        MultiSigWalletWithStringErrorContract.connect(addr3).confirmTransaction(
+          txIndex
+        )
+      );
+    });
+
+    it("allows one owner to execute a transaction", async () => {
+      const prevTestValue = await TestContract.i();
+
+      await expect(
+        MultiSigWalletWithStringErrorContract.connect(owner).executeTransaction(
+          txIndex
+        )
+      ).not.to.be.reverted;
+
+      const nextTestValue = await TestContract.i();
+
+      expect(nextTestValue).to.equal(prevTestValue.add(calledValue));
+    });
+
+    it("emits an event upon successful execution of transaction", async () => {
+      await expect(
+        MultiSigWalletWithStringErrorContract.connect(owner).executeTransaction(
+          txIndex
+        )
+      )
+        .to.emit(MultiSigWalletWithStringErrorContract, "ExecuteTransaction")
+        .withArgs(owner.address, txIndex);
+    });
+
+    it("prevents non-owner from executing a transaction", async () => {
+      await expect(
+        MultiSigWalletWithStringErrorContract.connect(addr5).executeTransaction(
+          txIndex
+        )
+      ).to.be.revertedWith("NOT_OWNER");
+    });
+
+    it("prevents execution of non-existent transaction", async () => {
+      await expect(
+        MultiSigWalletWithStringErrorContract.connect(owner).executeTransaction(
+          txIndex + 1
+        )
+      ).to.be.revertedWith("TX_DOES_NOT_EXIST");
+    });
+
+    it("prevents execution of transaction which has already executed", async () => {
+      await MultiSigWalletWithStringErrorContract.connect(
+        owner
+      ).executeTransaction(txIndex);
+
+      await expect(
+        MultiSigWalletWithStringErrorContract.connect(owner).executeTransaction(
+          txIndex
+        )
+      ).to.be.revertedWith("TX_ALREADY_EXECUTED");
+    });
+
+    it("prevents confirmation of a transaction which has already executed", async () => {
+      await MultiSigWalletWithStringErrorContract.connect(
+        owner
+      ).executeTransaction(txIndex);
+
+      await expect(
+        MultiSigWalletWithStringErrorContract.connect(addr4).confirmTransaction(
+          txIndex
+        )
+      ).to.be.revertedWith("TX_ALREADY_EXECUTED");
+    });
+
+    it("prevents revoking of the confirmation of a transaction which has already executed", async () => {
+      await MultiSigWalletWithStringErrorContract.connect(
+        owner
+      ).executeTransaction(txIndex);
+
+      await expect(
+        MultiSigWalletWithStringErrorContract.connect(addr1).revokeConfirmation(
+          txIndex
+        )
+      ).to.be.revertedWith("TX_ALREADY_EXECUTED");
+    });
+
+    it("prevents execution of transaction which does not have enough confirmations", async () => {
+      const data = await TestContract.getData(2);
+      const nextTxIndex = txIndex + 1;
+
+      await MultiSigWalletWithStringErrorContract.connect(
+        addr1
+      ).submitTransaction(TestContractAddress, nextValue, data);
+
+      await expect(
+        MultiSigWalletWithStringErrorContract.connect(owner).executeTransaction(
+          nextTxIndex
+        )
+      ).to.be.revertedWith("CANNOT_EXECUTE_TX");
+
+      // First Confirmation
+
+      await expect(
+        MultiSigWalletWithStringErrorContract.connect(addr1).confirmTransaction(
+          nextTxIndex
+        )
+      );
+
+      await expect(
+        MultiSigWalletWithStringErrorContract.connect(owner).executeTransaction(
+          nextTxIndex
+        )
+      ).to.be.revertedWith("CANNOT_EXECUTE_TX");
+
+      // Second Confirmation
+
+      await expect(
+        MultiSigWalletWithStringErrorContract.connect(addr2).confirmTransaction(
+          nextTxIndex
+        )
+      );
+
+      await expect(
+        MultiSigWalletWithStringErrorContract.connect(owner).executeTransaction(
+          nextTxIndex
+        )
+      ).to.be.revertedWith("CANNOT_EXECUTE_TX");
+
+      // Third Confirmation
+
+      await expect(
+        MultiSigWalletWithStringErrorContract.connect(addr3).confirmTransaction(
+          nextTxIndex
+        )
+      );
+
+      await expect(
+        MultiSigWalletWithStringErrorContract.connect(owner).executeTransaction(
+          nextTxIndex
+        )
+      ).not.to.be.reverted;
+    });
+  });
+
+  describe("Contract Deployment with call function", async () => {
+    // let nextTestContractAddress: string;
+    // call function will not return the address of the new contract
+
+    // Only way to test would be to use a create function with inline assembly
+
+    // Alternatively, would have to deploy on a testnet with 5 fake addresses to see txdata on the block explorer
+
+    beforeEach(async () => {
+      const transaction = await MultiSigWalletWithStringErrorContract.connect(
+        addr1
+      ).submitTransaction(ZERO_ADDRESS, 0, testContractJson.bytecode);
+
+      await transaction.wait();
+
+      await expect(
+        MultiSigWalletWithStringErrorContract.connect(addr1).confirmTransaction(
+          txIndex
+        )
+      );
+
+      await expect(
+        MultiSigWalletWithStringErrorContract.connect(addr2).confirmTransaction(
+          txIndex
+        )
+      );
+
+      await expect(
+        MultiSigWalletWithStringErrorContract.connect(addr3).confirmTransaction(
+          txIndex
+        )
+      );
+    });
+
+    it("does not revert an error when submitting a transaction with bytecode", async () => {
+      await expect(
+        MultiSigWalletWithStringErrorContract.connect(addr1).submitTransaction(
+          ZERO_ADDRESS,
+          0,
+          testContractJson.bytecode
+        )
+      ).not.to.be.reverted;
+    });
+
+    it("does not revert an error when executing a transaction with bytecode", async () => {
+      await expect(
+        MultiSigWalletWithStringErrorContract.connect(addr1).executeTransaction(
+          txIndex
+        )
+      ).not.to.be.reverted;
+    });
+
+    it("returns the address of the newly deployed contract", async () => {
+      await expect(
+        MultiSigWalletWithStringErrorContract.connect(addr1).executeTransaction(
+          txIndex
+        )
+      ).not.to.be.reverted;
+    });
+  });
+});
