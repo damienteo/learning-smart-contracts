@@ -518,6 +518,10 @@ describe("MultiSigWallet", () => {
     // let nextTestContractAddress: string;
     // call function will not return the address of the new contract
 
+    // Only way to test would be to use a create function with inline assembly
+
+    // Alternatively, would have to deploy on a testnet with 5 fake addresses to see txdata on the block explorer
+
     beforeEach(async () => {
       const transaction = await MultiSigWalletContract.connect(
         addr1
