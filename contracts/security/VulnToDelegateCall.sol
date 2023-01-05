@@ -92,3 +92,6 @@ contract Attack {
         payable(attacker).transfer(address(this).balance); // ether is sent to the attacker
     }
 }
+
+//https://docs.soliditylang.org/en/latest/contracts.html#libraries
+// use library for delegatecall
