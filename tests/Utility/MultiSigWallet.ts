@@ -564,4 +564,91 @@ describe("MultiSigWallet", () => {
       ).not.to.be.reverted;
     });
   });
+
+  describe("Deposit and Transfer of Network Token", async () => {
+    const sentValue = ethers.utils.parseEther("1");
+
+    it("Updates the balance of the Smart Contract when value is sent", async () => {
+      const prevBalance = await ethers.provider.getBalance(
+        MultiSigWalletContract.address
+      );
+
+      await owner.sendTransaction({
+        to: MultiSigWalletContract.address,
+        value: sentValue,
+      });
+
+      const nextBalance = await ethers.provider.getBalance(
+        MultiSigWalletContract.address
+      );
+
+      expect(nextBalance).to.equal(prevBalance.add(sentValue));
+    });
+
+    it("Emits Deposit event when value is transfered to the contract", async () => {
+      await expect(
+        addr1.sendTransaction({
+          to: MultiSigWalletContract.address,
+          value: sentValue,
+        })
+      )
+        .to.emit(MultiSigWalletContract, "Deposit")
+        .withArgs(addr1.address, sentValue, sentValue);
+    });
+
+    it("Emits Deposit event with updated balance when more value is transfered to the contract", async () => {
+      await owner.sendTransaction({
+        to: MultiSigWalletContract.address,
+        value: sentValue,
+      });
+
+      await expect(
+        owner.sendTransaction({
+          to: MultiSigWalletContract.address,
+          value: sentValue,
+        })
+      )
+        .to.emit(MultiSigWalletContract, "Deposit")
+        .withArgs(owner.address, sentValue, ethers.utils.parseEther("2"));
+    });
+
+    it("Allows transactions in which value is dispersed to other contracts", async () => {
+      await owner.sendTransaction({
+        to: MultiSigWalletContract.address,
+        value: ethers.utils.parseEther("10"),
+      });
+
+      const scBalance = await ethers.provider.getBalance(
+        MultiSigWalletContract.address
+      );
+
+      await MultiSigWalletContract.connect(owner).submitTransaction(
+        addr1.address,
+        sentValue,
+        "0x" // the equivalent of empty data
+      );
+
+      await MultiSigWalletContract.connect(addr1).confirmTransaction(txIndex);
+
+      await MultiSigWalletContract.connect(addr2).confirmTransaction(txIndex);
+
+      await MultiSigWalletContract.connect(addr3).confirmTransaction(txIndex);
+
+      const prevBalance = await addr1.getBalance();
+
+      await MultiSigWalletContract.connect(owner).executeTransaction(txIndex);
+
+      // Expects balance of Smart Contract to be updated
+      const nextScBalance = await ethers.provider.getBalance(
+        MultiSigWalletContract.address
+      );
+      expect(nextScBalance).to.equal(scBalance.sub(sentValue));
+
+      // Expects balance of Target Address to be updated
+      const nextBalance = await addr1.getBalance();
+      expect(nextBalance).to.equal(
+        prevBalance.add(ethers.utils.parseEther("1"))
+      );
+    });
+  });
 });
