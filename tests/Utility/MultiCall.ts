@@ -7,15 +7,11 @@ import {
 } from "../../typechain-types/contracts/Utility//MultiCall.sol";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
-const testContractJson = require("../../artifacts/contracts/Utility/MultiCall.sol/TestMultiCall");
-
 describe("MultiCall", () => {
   let owner: SignerWithAddress,
     MultiCallContract: MultiCall,
     TestMultiCall: TestMultiCall,
     TestMultiCallAddress: string;
-
-  const txIndex = 0;
 
   beforeEach(async () => {
     [owner] = await ethers.getSigners();
