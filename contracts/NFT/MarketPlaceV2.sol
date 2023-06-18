@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
 interface ERC20 {
@@ -42,9 +43,10 @@ contract MarketPlace {
         bool available;
     }
 
-    constructor(address _nftContractAddress, address _erc20ContractAddress)
-        public
-    {
+    constructor(
+        address _nftContractAddress,
+        address _erc20ContractAddress
+    ) public {
         nftContractAddress = _nftContractAddress;
         erc20ContractAddress = _erc20ContractAddress;
     }
