@@ -9,25 +9,59 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 error FullyClaimed();
 error NotInMerkle();
+error InvalidMilestone();
+error InvalidPeriod();
 
 contract MilestonePayments is Ownable {
     using SafeERC20 for IERC20;
 
     event Claimed(address claimant, uint256 balance);
     event MerkelRootUpdated(bytes32 oldMerkleRoot, bytes32 newMerkleRoot);
+    event MilestoneUpdated(uint256 newMilestone);
+    event PeriodUpdated(uint256 newPeriod);
 
     bytes32 public merkleRoot;
     IERC20 public token;
+    uint256 public period; // in months
+    uint256 public milestone; // current month
     mapping(address => uint256) public cumulativeClaimed;
 
-    constructor(bytes32 _merkleRoot, IERC20 _token) {
+    constructor(bytes32 _merkleRoot, IERC20 _token, uint256 _period) {
+        if (_period < 1) revert InvalidPeriod();
+
         merkleRoot = _merkleRoot;
         token = _token;
+        period = _period;
     }
 
-    function setMerkleRoot(bytes32 merkleRoot_) external onlyOwner {
-        emit MerkelRootUpdated(merkleRoot, merkleRoot_);
-        merkleRoot = merkleRoot_;
+    function getClaimableAmount(
+        address to,
+        uint256 totalClaim,
+        bytes32[] calldata proof,
+        uint256 prevClaimed
+    ) internal view returns (uint256 toClaim) {
+        if (prevClaimed >= totalClaim) revert FullyClaimed();
+
+        if (milestone < 1) revert InvalidMilestone();
+
+        bytes32 leaf = keccak256(abi.encodePacked(to, totalClaim));
+        bool isValidLeaf = MerkleProof.verify(proof, merkleRoot, leaf);
+        if (!isValidLeaf) revert NotInMerkle();
+
+        unchecked {
+            // https://consensys.github.io/smart-contract-best-practices/development-recommendations/solidity-specific/integer-division/
+            uint256 nextClaim = (totalClaim * milestone) / period;
+            toClaim = nextClaim - prevClaimed;
+        }
+    }
+
+    function getNextClaim(
+        address to,
+        uint256 totalClaim,
+        bytes32[] calldata proof
+    ) public view returns (uint256 nextClaim) {
+        uint256 claimed = cumulativeClaimed[to];
+        nextClaim = getClaimableAmount(to, totalClaim, proof, claimed);
     }
 
     function claim(
@@ -35,19 +69,33 @@ contract MilestonePayments is Ownable {
         uint256 totalClaim,
         bytes32[] calldata proof
     ) external {
-        bytes32 leaf = keccak256(abi.encodePacked(to, totalClaim));
-        bool isValidLeaf = MerkleProof.verify(proof, merkleRoot, leaf);
-        if (!isValidLeaf) revert NotInMerkle();
-
         uint256 claimed = cumulativeClaimed[to];
-        if (claimed >= totalClaim) revert FullyClaimed();
-
-        cumulativeClaimed[to] = totalClaim;
+        uint256 toClaim = getClaimableAmount(to, totalClaim, proof, claimed);
 
         unchecked {
-            uint256 toClaim = totalClaim - claimed;
-            token.safeTransfer(to, toClaim);
-            emit Claimed(to, toClaim);
+            cumulativeClaimed[to] = claimed + toClaim;
         }
+
+        token.safeTransfer(to, toClaim);
+        emit Claimed(to, toClaim);
+    }
+
+    function setMilestone(uint256 _milestone) external onlyOwner {
+        if (_milestone > period) revert InvalidMilestone();
+
+        emit MilestoneUpdated(_milestone);
+        milestone = _milestone;
+    }
+
+    function setPeriod(uint256 _period) external onlyOwner {
+        if (_period < milestone) revert InvalidPeriod();
+
+        emit PeriodUpdated(_period);
+        period = _period;
+    }
+
+    function setMerkleRoot(bytes32 _merkleRoot) external onlyOwner {
+        emit MerkelRootUpdated(merkleRoot, _merkleRoot);
+        merkleRoot = _merkleRoot;
     }
 }
