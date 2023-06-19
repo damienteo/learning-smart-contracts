@@ -53,6 +53,25 @@ describe("Escrow", () => {
   });
 
   it("allows creation of an escrow clone", async () => {
+    const transaction = await EscrowProxyFactoryContract.createNewEscrow(
+      addr1.address,
+      addr2.address,
+      addr3.address,
+      { value: sentValue }
+    );
+
+    const receipt = await transaction.wait();
+
+    const gasPrice = transaction.gasPrice; // BigNumber
+    const gasUsed = receipt.gasUsed; // BigNumber
+
+    const gasFee = gasPrice!.mul(gasUsed); // Total gas fee in Wei
+
+    // Convert gas fee from Wei to Ether (ETH)
+    const gasFeeInEth = ethers.utils.formatEther(gasFee);
+
+    console.log(`Gas Fee: ${gasFeeInEth} ETH`);
+
     await expect(
       EscrowProxyFactoryContract.createNewEscrow(
         addr1.address,
