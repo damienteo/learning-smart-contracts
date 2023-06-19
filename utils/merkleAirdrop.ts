@@ -33,6 +33,14 @@ export const generateMerkleTree = (details: IAirDropDetails): MerkleTree => {
   );
 };
 
+export const multiplyBigNumbers = (a: number, b: number) => {
+  return BigInt(a) * BigInt(b);
+};
+
+export const divideBigNumbers = (a: number, b: number) => {
+  return BigInt(a) / BigInt(b);
+};
+
 export const getMerkleProof = (
   address: string,
   value: number,

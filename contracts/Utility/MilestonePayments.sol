@@ -51,6 +51,9 @@ contract MilestonePayments is Ownable {
         unchecked {
             // https://consensys.github.io/smart-contract-best-practices/development-recommendations/solidity-specific/integer-division/
             uint256 nextClaim = (totalClaim * milestone) / period;
+
+            if (nextClaim == prevClaimed) revert FullyClaimed();
+
             toClaim = nextClaim - prevClaimed;
         }
     }
