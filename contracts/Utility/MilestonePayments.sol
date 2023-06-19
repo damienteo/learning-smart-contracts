@@ -17,16 +17,16 @@ contract MilestonePayments is Ownable {
 
     event Claimed(address claimant, uint256 balance);
     event MerkelRootUpdated(bytes32 oldMerkleRoot, bytes32 newMerkleRoot);
-    event MilestoneUpdated(uint256 newMilestone);
-    event PeriodUpdated(uint256 newPeriod);
+    event MilestoneUpdated(uint32 newMilestone);
+    event PeriodUpdated(uint32 newPeriod);
 
     bytes32 public merkleRoot;
+    uint32 public period; // in months
+    uint32 public milestone; // current month
     IERC20 public token;
-    uint256 public period; // in months
-    uint256 public milestone; // current month
     mapping(address => uint256) public cumulativeClaimed;
 
-    constructor(bytes32 _merkleRoot, IERC20 _token, uint256 _period) {
+    constructor(bytes32 _merkleRoot, IERC20 _token, uint32 _period) {
         if (_period < 1) revert InvalidPeriod();
 
         merkleRoot = _merkleRoot;
@@ -83,14 +83,14 @@ contract MilestonePayments is Ownable {
         nextClaim = getClaimableAmount(to, totalClaim, proof, claimed);
     }
 
-    function setMilestone(uint256 _milestone) external onlyOwner {
+    function setMilestone(uint32 _milestone) external onlyOwner {
         if (_milestone > period) revert InvalidMilestone();
 
         emit MilestoneUpdated(_milestone);
         milestone = _milestone;
     }
 
-    function setPeriod(uint256 _period) external onlyOwner {
+    function setPeriod(uint32 _period) external onlyOwner {
         if (_period < milestone) revert InvalidPeriod();
 
         emit PeriodUpdated(_period);
