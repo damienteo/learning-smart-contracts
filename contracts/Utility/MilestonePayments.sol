@@ -58,15 +58,6 @@ contract MilestonePayments is Ownable {
         }
     }
 
-    function getNextClaim(
-        address to,
-        uint256 totalClaim,
-        bytes32[] calldata proof
-    ) public view returns (uint256 nextClaim) {
-        uint256 claimed = cumulativeClaimed[to];
-        nextClaim = getClaimableAmount(to, totalClaim, proof, claimed);
-    }
-
     function claim(
         address to,
         uint256 totalClaim,
@@ -81,6 +72,15 @@ contract MilestonePayments is Ownable {
 
         token.safeTransfer(to, toClaim);
         emit Claimed(to, toClaim);
+    }
+
+    function getNextClaim(
+        address to,
+        uint256 totalClaim,
+        bytes32[] calldata proof
+    ) public view returns (uint256 nextClaim) {
+        uint256 claimed = cumulativeClaimed[to];
+        nextClaim = getClaimableAmount(to, totalClaim, proof, claimed);
     }
 
     function setMilestone(uint256 _milestone) external onlyOwner {

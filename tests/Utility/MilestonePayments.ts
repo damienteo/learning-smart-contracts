@@ -40,6 +40,7 @@ const amounts = {
 const treasuryAmt = ethers.utils.parseEther("10000");
 const PERIOD = 12;
 const FIRST_MILESTONE = 1;
+const nextMileStone = FIRST_MILESTONE + 1;
 
 describe("MilestonePayments", () => {
   let owner: SignerWithAddress,
@@ -255,6 +256,17 @@ describe("MilestonePayments", () => {
       )
         .to.emit(MilestonePaymentsContract, "Claimed")
         .withArgs(addr1.address, claimableAmount);
+    });
+    it("allows a full claim after final milestone is reached", async () => {
+      const proof = getMerkleProof(addr1.address, amounts[2], airdropDetails);
+      const fullClaimAmt = getParsedValue(amounts[2], airdropDetails.decimals);
+
+      await MilestonePaymentsContract.setMilestone(PERIOD);
+
+      await MilestonePaymentsContract.claim(addr1.address, fullClaimAmt, proof);
+      expect(
+        await AccessControlTokenContract.balanceOf(addr1.address)
+      ).to.equal(fullClaimAmt);
     });
     it("rejects a claim if a claim amount smaller than the current claim is given", async () => {
       const proof = getMerkleProof(addr1.address, amounts[2], airdropDetails);
@@ -551,7 +563,96 @@ describe("MilestonePayments", () => {
     });
   });
 
-  // test read function for getNextClaim
-  // setting invalid milestone
-  // setting invalid period
+  describe("Milestones", () => {
+    it("updates milestones", async () => {
+      await expect(MilestonePaymentsContract.setMilestone(nextMileStone)).not.to
+        .be.reverted;
+
+      expect(await MilestonePaymentsContract.milestone()).to.equal(
+        nextMileStone
+      );
+    });
+    it("reverts if non-owners update milestones", async () => {
+      await expect(
+        MilestonePaymentsContract.connect(addr1).setMilestone(nextMileStone)
+      ).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+    it("reverts if milestone is after period", async () => {
+      await expect(
+        MilestonePaymentsContract.setMilestone(PERIOD + 1)
+      ).to.be.revertedWithCustomError(
+        MilestonePaymentsContract,
+        "InvalidMilestone"
+      );
+    });
+  });
+
+  describe("Periods", () => {
+    const nextPeriod = PERIOD + 1;
+
+    it("updates periods", async () => {
+      await expect(MilestonePaymentsContract.setPeriod(nextPeriod)).not.to.be
+        .reverted;
+
+      expect(await MilestonePaymentsContract.period()).to.equal(nextPeriod);
+    });
+    it("reverts if non-owners update periods", async () => {
+      await expect(
+        MilestonePaymentsContract.connect(addr1).setPeriod(nextPeriod)
+      ).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+    it("reverts if period is before milestone", async () => {
+      await MilestonePaymentsContract.setMilestone(nextMileStone);
+
+      await expect(
+        MilestonePaymentsContract.setPeriod(nextMileStone - 1)
+      ).to.be.revertedWithCustomError(
+        MilestonePaymentsContract,
+        "InvalidPeriod"
+      );
+    });
+  });
+
+  describe("gets next claimable amount via a read function", () => {
+    it("returns claimable amount", async () => {
+      const proof = getMerkleProof(addr1.address, amounts[2], airdropDetails);
+      const nextAmount = await MilestonePaymentsContract.getNextClaim(
+        addr1.address,
+        getParsedValue(amounts[2], airdropDetails.decimals),
+        proof
+      );
+
+      const claimAmt = getParsedValue(amounts[2], airdropDetails.decimals);
+
+      const claimableAmount = getClaimableAmt(
+        Number(claimAmt),
+        FIRST_MILESTONE,
+        PERIOD
+      );
+
+      expect(nextAmount).to.equal(claimableAmount);
+    });
+
+    it("returns claimable amount after milestone is updated", async () => {
+      const proof = getMerkleProof(addr1.address, amounts[2], airdropDetails);
+
+      await MilestonePaymentsContract.setMilestone(nextMileStone);
+
+      const nextAmount = await MilestonePaymentsContract.getNextClaim(
+        addr1.address,
+        getParsedValue(amounts[2], airdropDetails.decimals),
+        proof
+      );
+
+      const claimAmt = getParsedValue(amounts[2], airdropDetails.decimals);
+
+      const claimableAmount = getClaimableAmt(
+        Number(claimAmt),
+        nextMileStone,
+        PERIOD
+      );
+
+      expect(nextAmount).to.equal(claimableAmount);
+    });
+  });
 });
