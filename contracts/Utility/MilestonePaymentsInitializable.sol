@@ -84,6 +84,7 @@ contract MilestonePaymentsInitializable is Initializable {
             cumulativeClaimed[to] = claimed + toClaim;
         }
 
+        // NOTE: Possibility of adding a 0.3% Mediation fee to Mediator address
         token.safeTransfer(to, toClaim);
         emit Claimed(to, toClaim);
     }
