@@ -646,6 +646,12 @@ describe("MilestonePayments", () => {
         nextMileStone
       );
     });
+
+    it("emits PeriodUpdated event after updating period", async () => {
+      await expect(MilestonePaymentsCloneContract.setMilestone(nextMileStone))
+        .to.emit(MilestonePaymentsCloneContract, "MilestoneUpdated")
+        .withArgs(nextMileStone);
+    });
     it("reverts if non-owners update milestones", async () => {
       await expect(
         MilestonePaymentsCloneContract.connect(addr1).setMilestone(
@@ -676,6 +682,11 @@ describe("MilestonePayments", () => {
       expect(await MilestonePaymentsCloneContract.period()).to.equal(
         nextPeriod
       );
+    });
+    it("emits PeriodUpdated event after updating period", async () => {
+      await expect(MilestonePaymentsCloneContract.setPeriod(nextPeriod))
+        .to.emit(MilestonePaymentsCloneContract, "PeriodUpdated")
+        .withArgs(nextPeriod);
     });
     it("reverts if non-owners update periods", async () => {
       await expect(
