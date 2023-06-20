@@ -1,6 +1,7 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import MerkleTree from "merkletreejs";
+import BigNumber from "bignumber.js";
 
 import {
   MilestonePayments,
@@ -16,8 +17,6 @@ import {
   getParsedValue,
   generateMerkleTree,
   getMerkleProof,
-  multiplyBigNumbers,
-  divideBigNumbers,
 } from "../../utils/merkleAirdrop";
 
 const getClaimableAmt = (
@@ -25,9 +24,12 @@ const getClaimableAmt = (
   milestone: number,
   period: number
 ) => {
-  const numerator = multiplyBigNumbers(totalAmt, milestone);
-  const amount = divideBigNumbers(Number(numerator), period);
-  return amount.toString();
+  const bnTotalAmount = new BigNumber(totalAmt);
+
+  return bnTotalAmount
+    .multipliedBy(milestone)
+    .dividedBy(period)
+    .decimalPlaces(0, BigNumber.ROUND_FLOOR);
 };
 
 const amounts = {
@@ -252,7 +254,7 @@ describe("MilestonePayments", () => {
         await AccessControlTokenContract.balanceOf(addr1.address)
       ).to.equal(claimableAmount);
     });
-    it("updates balance of airdrop contract after claim", async () => {
+    it("updates balance of payments contract after claim", async () => {
       expect(
         await AccessControlTokenContract.balanceOf(
           MilestonePaymentsCloneContract.address
@@ -266,11 +268,14 @@ describe("MilestonePayments", () => {
         PERIOD
       );
       await MilestonePaymentsCloneContract.claim(addr1.address, mintAmt, proof);
+
       expect(
         await AccessControlTokenContract.balanceOf(
           MilestonePaymentsCloneContract.address
         )
-      ).to.equal(BigInt(Number(treasuryAmt)) - BigInt(claimableAmount));
+      ).to.equal(
+        BigInt(Number(treasuryAmt)) - BigInt(claimableAmount.toString()) // BigInt converts Numbers weirdly rarely
+      );
     });
     it("updates Claimed mapping after claim", async () => {
       expect(
@@ -287,6 +292,45 @@ describe("MilestonePayments", () => {
       expect(
         await MilestonePaymentsCloneContract.cumulativeClaimed(addr1.address)
       ).to.equal(claimableAmount);
+    });
+    it("has the correct claim at each milestone, and updates cumulativeClaimed mapping accordingly, for each claimant", async () => {
+      const testCondition = async (
+        address: string,
+        amount: number,
+        milestone: number
+      ) => {
+        const proof = getMerkleProof(address, amount, airdropDetails);
+        const mintAmt = getParsedValue(amount, airdropDetails.decimals);
+
+        const claimableAmount = getClaimableAmt(
+          Number(mintAmt),
+          milestone,
+          PERIOD
+        );
+
+        // Claim as per milestone
+        await MilestonePaymentsCloneContract.claim(address, mintAmt, proof);
+
+        // Check that cumulative claims are updated
+        expect(
+          await MilestonePaymentsCloneContract.cumulativeClaimed(address)
+        ).to.equal(claimableAmount);
+        // Check that balance has been updated
+        expect(await AccessControlTokenContract.balanceOf(address)).to.equal(
+          claimableAmount
+        );
+      };
+
+      const { airdrop } = airdropDetails;
+      const accounts = Object.keys(airdrop);
+
+      for (let milestone = 1; milestone <= PERIOD; milestone++) {
+        await MilestonePaymentsCloneContract.setMilestone(milestone);
+
+        for (const account of accounts) {
+          await testCondition(account, airdrop[account], milestone);
+        }
+      }
     });
     it("emits Claimed event after claim", async () => {
       const proof = getMerkleProof(addr1.address, amounts[2], airdropDetails);
