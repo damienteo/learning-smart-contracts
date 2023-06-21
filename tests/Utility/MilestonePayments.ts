@@ -633,7 +633,7 @@ describe("MilestonePayments", () => {
       expect(nextAmount).to.equal(claimableAmount);
     });
 
-    it("returns claimable amount after milestone is updated", async () => {
+    it("Claimable amount via Read Function", async () => {
       const proof = getMerkleProof(addr1.address, amounts[2], airdropDetails);
 
       await MilestonePaymentsContract.setMilestone(nextMileStone);

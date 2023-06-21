@@ -752,7 +752,7 @@ describe("MilestonePayments", () => {
     });
   });
 
-  describe("gets next claimable amount via a read function", () => {
+  describe("Claimable amount via Read Function", () => {
     it("returns claimable amount", async () => {
       const proof = getMerkleProof(addr1.address, amounts[2], airdropDetails);
       const nextAmount = await MilestonePaymentsCloneContract.getNextClaim(
