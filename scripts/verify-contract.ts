@@ -3,6 +3,7 @@ import { run } from "hardhat";
 const network: Record<number, string> = {
   80001: "polygon_mumbai",
   137: "polygon",
+  11155111: "sepolia",
 };
 
 const verify = async (

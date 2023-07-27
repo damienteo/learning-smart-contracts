@@ -39,10 +39,15 @@ const config: HardhatUserConfig = {
       url: "https://api.avax-test.network/ext/bc/C/rpc",
       accounts: [PRIVATE_KEY || ""],
     },
+    sepolia: {
+      url: "https://rpc.sepolia.org",
+      accounts: [PRIVATE_KEY || ""],
+    },
   },
   etherscan: {
     apiKey: {
       goerli: ETHERSCAN_API || "",
+      sepolia: ETHERSCAN_API || "",
       polygonMumbai: POLYGONSCAN_API || "",
       avalancheFujiTestnet: SNOWTRACE_API || "",
     },
