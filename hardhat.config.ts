@@ -8,6 +8,8 @@ require("dotenv").config();
 const {
   STAGING_QUICKNODE_KEY,
   INFURA_API,
+  LINEA_GOERLI_RPC_URL,
+  MUMBAI_POLYGON_RPC_URL,
   PRIVATE_KEY,
   ETHERSCAN_API,
   POLYGONSCAN_API,
@@ -32,7 +34,7 @@ const config: HardhatUserConfig = {
       accounts: [PRIVATE_KEY || ""],
     },
     mumbai: {
-      url: "https://matic-mumbai.chainstacklabs.com/",
+      url: MUMBAI_POLYGON_RPC_URL,
       accounts: [PRIVATE_KEY || ""],
     },
     fuji: {
@@ -41,6 +43,10 @@ const config: HardhatUserConfig = {
     },
     sepolia: {
       url: "https://rpc.sepolia.org",
+      accounts: [PRIVATE_KEY || ""],
+    },
+    linea: {
+      url: LINEA_GOERLI_RPC_URL,
       accounts: [PRIVATE_KEY || ""],
     },
   },
