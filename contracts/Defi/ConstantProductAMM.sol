@@ -154,23 +154,27 @@ contract ConstantProductAMM {
         (L1 - L0) / L0 = ( sqrt((x + dx)(y + dy)) - sqrt(xy) ) / sqrt(xy)
         
         dx/dy = x/y
-        dy = dx * y / x
+        dy = dx * y / x (change in y is equivalent to rate of change of x multiplied by y)
 
         Equation 2:
-
-        Equation 1 =  = (sqrt(xy + 2ydx + dx^2 * y / x) - sqrt(xy)) / sqrt(xy)
 
         --- Equation 2 ---
         Equation 1 = (sqrt(xy + 2ydx + dx^2 * y / x) - sqrt(xy)) / sqrt(xy)
 
         Multiply by sqrt(x) / sqrt(x)
-        Equation 2 = (sqrt(x^2y + 2xydx + dx^2 * y) - sqrt(x^2y)) / sqrt(x^2y)
-                   = (sqrt(y)(sqrt(x^2 + 2xdx + dx^2) - sqrt(x^2)) / (sqrt(y)sqrt(x^2))
+        Equation 2 = (sqrt(xy + 2ydx + dx^2 * y / x) - sqrt(xy)) * sqrt(x) / sqrt(xy) * sqrt(x)
+                   * numberator is (sqrt(xy + 2ydx + dx^2 * y / x) - sqrt(xy)) * sqrt(x)
+                     -> (sqrt(xy + 2ydx + dx * y/x) * sqrt(x) - sqrt(xy) * sqrt(x))
+                     -> (sqrt(x^2y + 2xydx + dx^2 * y) - sqrt(x2y)
+                   * denominator is sqrt(xy) * sqrt(x) -> sqrt(x^2y)
+                   = (sqrt(x^2y + 2xydx + dx^2 * y) - sqrt(x^2y)) / sqrt(x^2y)
+                   = (sqrt(y)(sqrt(x^2 + 2xdx + dx^2) - sqrt(x^2)) / (sqrt(y)sqrt(x^2)) (remove y from numerator and denominator)
         
-        sqrt(y) on top and bottom cancels out
+        sqrt(y) on top and bottom cancels out, resulting in Equation 3
 
         --- Equation 3 ---
-        Equation 2 = (sqrt(x^2 + 2xdx + dx^2) - sqrt(x^2)) / (sqrt(x^2)
+        Equation 3 = (sqrt(x^2 + 2xdx + dx^2) - sqrt(x^2)) / (sqrt(x^2)
+        * (x^2 + 2xdx + dx^2) = (x + dx)^2
         = (sqrt((x + dx)^2) - sqrt(x^2)) / sqrt(x^2)  
         = ((x + dx) - x) / x
         = dx / x
